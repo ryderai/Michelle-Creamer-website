@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Listings | Michelle Creamer, ARC Realty</title>
+<meta name="description" content="Search homes for sale in Liberty Park, Vestavia Hills, Hoover, and greater Birmingham with Michelle Creamer, ARC Realty.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1524'/%3E%3Ctext x='32' y='42' font-family='Georgia' font-size='28' fill='%23c9ab72' text-anchor='middle'%3EMC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..650;1,9..144,300..650&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="nav-wrap">
+  <nav class="nav" aria-label="Main">
+    <a class="nav-brand" href="index.html">
+      <img class="nav-logo" src="https://cdn-cws.datafloat.com/ARC/images/company/ARC/logo.png" alt="ARC Realty" height="26" onerror="this.remove()">
+      <span class="brand-text">
+        <span class="brand-name">Michelle Creamer</span>
+        <span class="brand-sub">ARC Realty &middot; Liberty Park</span>
+      </span>
+    </a>
+    <button class="nav-toggle" aria-label="Menu"><span></span><span></span><span></span></button>
+    <ul class="nav-menu">
+      <li class="nav-item has-dd">
+        <a class="nav-link" href="property-search.html">Property Search <span class="caret">&#9660;</span></a>
+        <div class="dropdown">
+          <a href="property-search.html">Search Listings</a>
+          <a href="open-houses.html">Open Houses</a>
+          <a href="new-construction.html">New Construction</a>
+          <a href="commercial.html">Commercial</a>
+          <a href="acreage-lots.html">Acreage &amp; Lots</a>
+          <a href="luxury.html">Luxury Properties</a>
+          <a href="home-buying-guide.html">Home Buying Guide</a>
+        </div>
+      </li>
+      <li class="nav-item has-dd">
+        <a class="nav-link" href="my-home-value.html">Sell Your Home <span class="caret">&#9660;</span></a>
+        <div class="dropdown">
+          <a href="my-home-value.html">What&rsquo;s My Home Worth?</a>
+          <a href="marketing-your-home.html">Marketing Your Home</a>
+          <a href="market-trends.html">Market Conditions</a>
+        </div>
+      </li>
+      <li class="nav-item has-dd">
+        <a class="nav-link" href="about-us.html">About ARC <span class="caret">&#9660;</span></a>
+        <div class="dropdown">
+          <a href="our-story.html">Our Story</a>
+          <a href="relocation.html">Relocation</a>
+          <a href="giving-back.html">Giving Back</a>
+          <a href="press.html">In the News</a>
+          <a href="join-the-team.html">Join the Team</a>
+        </div>
+      </li>
+      <li class="nav-item has-dd">
+        <a class="nav-link" href="communities.html">Communities <span class="caret">&#9660;</span></a>
+        <div class="dropdown">
+          <span class="dd-label">Birmingham</span>
+          <a href="liberty-park.html">Liberty Park</a>
+          <a href="communities.html">All Communities</a>
+        </div>
+      </li>
+      <li class="nav-item"><a class="nav-link" href="blog.html">Blog</a></li>
+    </ul>
+    <a class="btn brass sm nav-cta" href="contact-me.html">Contact Michelle</a>
+  </nav>
+</div>
+
+
+<header class="page-hero">
+  
+  <div class="container">
+    <nav class="breadcrumb"><a href="index.html">Home</a><span>/</span><span>Property Search</span></nav>
+    <div class="eyebrow">Property Search</div>
+    <h1>Search Listings</h1>
+    <p class="lede">Browse Michelle&rsquo;s current portfolio across Liberty Park, Vestavia Hills, and Birmingham. Full MLS map search goes live with the ARC listing feed — until then, every one of Michelle&rsquo;s listings is right here.</p>
+  </div>
+</header>
+
+<section data-listing-page>
+  <div class="container">
+    
+    <div class="listing-toolbar">
+      <input type="search" data-listing-search placeholder="Search by address, city, zip, neighborhood, or MLS#">
+      <select data-listing-type aria-label="Property type">
+        <option value="all">All Types</option>
+        <option value="single-family">Single Family</option>
+        <option value="townhome">Townhome / Condo</option>
+        <option value="lot">Acreage / Lots</option>
+        <option value="rental">Rentals</option>
+        <option value="commercial">Commercial</option>
+      </select>
+      <select data-listing-sort aria-label="Sort">
+        <option value="">Newest</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="sqft-desc">Largest First</option>
+      </select>
+      <span class="results-count" data-results-count></span>
+    </div>
+    <div class="listing-grid" data-listings data-filter="all"></div>
+    <div class="form-card mt-3" style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between">
+      <div>
+        <h3 style="font-size:22px;margin-bottom:6px">Want the full MLS at your fingertips?</h3>
+        <p style="color:var(--text-soft);max-width:56ch">Download the ARC Home Search app to browse every listing in Alabama, save searches, and message Michelle directly.</p>
+      </div>
+      <a class="btn" href="https://app.arcrealtyco.com/michellecreamer-1444" target="_blank" rel="noopener">Download the App</a>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div class="container">
+    <div class="eyebrow" style="justify-content:center">Let&rsquo;s Talk</div>
+    <h2 class="reveal">Don&rsquo;t see the right home?</h2>
+    <p class="reveal reveal-d1">Michelle hears about Liberty Park homes before they hit the market. Tell her what you&rsquo;re looking for.</p>
+    <div class="btn-row reveal reveal-d2">
+      <a class="btn brass" href="contact-me.html">Work With Michelle</a>
+      <a class="btn ghost on-dark" href="my-home-value.html">Get Your Home Value</a>
+    </div>
+  </div>
+</section>
+
+
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand-name">Michelle Creamer</div>
+        <div class="brand-sub">Realtor&reg; / Associate Broker &middot; ARC Realty</div>
+        <p>#1 sales agent in Vestavia Hills. Serving Liberty Park, Vestavia Hills, and the greater Birmingham market since 2002. License #70777.</p>
+        <div class="footer-social">
+          <a href="https://twitter.com/mcreamer2" target="_blank" rel="noopener" aria-label="X / Twitter">X</a>
+          <a href="https://www.linkedin.com/in/michelle-creamer-71bbba43" target="_blank" rel="noopener" aria-label="LinkedIn">in</a>
+          <a href="http://www.zillow.com/profile/mcreamer1/" target="_blank" rel="noopener" aria-label="Zillow">Z</a>
+        </div>
+      </div>
+      <div>
+        <h4>Property Search</h4>
+        <ul class="footer-links">
+          <li><a href="property-search.html">Search Listings</a></li>
+          <li><a href="open-houses.html">Open Houses</a></li>
+          <li><a href="new-construction.html">New Construction</a></li>
+          <li><a href="luxury.html">Luxury Properties</a></li>
+          <li><a href="home-buying-guide.html">Home Buying Guide</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Sellers &amp; ARC</h4>
+        <ul class="footer-links">
+          <li><a href="my-home-value.html">What&rsquo;s My Home Worth?</a></li>
+          <li><a href="marketing-your-home.html">Marketing Your Home</a></li>
+          <li><a href="market-trends.html">Market Conditions</a></li>
+          <li><a href="our-story.html">Our Story</a></li>
+          <li><a href="join-the-team.html">Join the Team</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Office</h4>
+        <ul class="footer-contact">
+          <li>3215 Endeavor Lane Suite 113<br>Vestavia Hills, AL 35242</li>
+          <li><b>Mobile</b> <a href="tel:2059998164">(205) 999-8164</a></li>
+          <li><b>Office</b> <a href="tel:2059698910">(205) 969-8910</a></li>
+          <li><b>Fax</b> 205-533-9914</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>Copyright &copy; 2026 ARC Realty. All Rights Reserved. &middot; Equal Housing Opportunity</span>
+      <div class="footer-legal">
+        <a href="privacy-policy.html">Privacy Policy</a>
+        <a href="dmca-notice.html">DMCA Notice</a>
+        <a href="fair-housing-statement.html">Fair Housing Statement</a>
+        <a href="accessibility-policy.html">Accessibility Policy</a>
+        <a href="https://arcrealtydashboard.com/ARC/login.zul" target="_blank" rel="noopener">Agent Login</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script src="js/listings.js"></script>
+<script src="js/account.js"></script>
+</body>
+</html>
