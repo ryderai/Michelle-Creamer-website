@@ -254,7 +254,9 @@ section.tight { padding: clamp(48px, 6vw, 80px) 0; }
 
 /* ---------- Hero (home) ---------- */
 .hero {
-  position: relative; min-height: 92vh;
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh; /* true full screen on mobile — ignores browser chrome jump */
   display: flex; align-items: center;
   padding: 150px 0 90px;
   color: var(--white);
@@ -782,3 +784,222 @@ footer h4 { color: var(--white); font-size: 12.5px; letter-spacing: .18em; text-
 .prose ul { margin: 0 0 18px 0; }
 .prose ul li { position: relative; padding-left: 26px; margin-bottom: 10px; color: var(--text-soft); }
 .prose ul li::before { content: ""; position: absolute; left: 6px; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--brass); }
+
+/* ============ LIBERTY PARK PHOTO GALLERY (real community photos, Jul 2026) ============ */
+.lp-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.lp-gallery figure { margin: 0; position: relative; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-lg); aspect-ratio: 4/3; background: var(--navy); }
+.lp-gallery img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .8s var(--ease); }
+.lp-gallery figure:hover img { transform: scale(1.05); }
+.lp-gallery figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 16px 12px; color: #fff; font-size: 13px; letter-spacing: .03em; background: linear-gradient(transparent, rgba(11,21,36,.78)); }
+@media (max-width: 880px) { .lp-gallery { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .lp-gallery { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   MOBILE OPTIMIZATION PASS — premium responsive polish (Jul 2026)
+   ============================================================ */
+
+/* Guard against any accidental horizontal scroll on small screens */
+html, body { overflow-x: clip; }
+
+/* --- Tablet & below --- */
+@media (max-width: 880px) {
+  /* Agent section: stack photo above bio instead of squeezing side-by-side */
+  .agent-card { grid-template-columns: 1fr; }
+  .agent-photo { max-width: 420px; margin-inline: auto; width: 100%; }
+  .agent-info { text-align: left; }
+
+  /* Interior page heroes: less dead space up top */
+  .page-hero { padding: 150px 0 64px; }
+  .page-hero.has-img { min-height: 52vh; }
+
+  /* Numbered steps: tighter gutter */
+  .step { grid-template-columns: 56px 1fr; gap: 18px; }
+  .step-num { font-size: 34px; }
+}
+
+/* --- Phones --- */
+@media (max-width: 640px) {
+  /* Rhythm: comfortable but not endless scrolling */
+  section { padding: 64px 0; }
+  section.tight { padding: 44px 0; }
+  .container { width: min(1200px, 100% - 40px); }
+
+  /* Hero: full screen, tighter internal spacing */
+  .hero { padding: 110px 0 48px; }
+  .hero .eyebrow { margin-bottom: 14px; }
+  .hero h1 { margin-bottom: 16px; }
+  .hero-sub { margin-bottom: 30px; }
+
+  /* Hero search: slimmer pill so it breathes at 390px */
+  .hero-search { padding: 6px 6px 6px 18px; }
+  .hero-search input { font-size: 15px; }
+  .hero-search .btn { padding: 13px 22px; }
+
+  /* Hero stats: clean 2×2 grid instead of uneven wrapping */
+  .hero-stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 26px 16px; margin-top: 40px;
+  }
+  .hero-stat .num { font-size: 28px; }
+  .hero-stat .lbl { font-size: 10.5px; letter-spacing: .14em; }
+
+  /* Interior page heroes */
+  .page-hero { padding: 130px 0 52px; }
+  .page-hero.has-img { min-height: 46vh; }
+
+  /* Card grids: one clean column, no cramped near-misses */
+  .listing-grid, .community-grid, .testimonial-grid { grid-template-columns: 1fr; }
+  .community-card { aspect-ratio: 4/4.2; }
+
+  /* Contact pills: full-width tap targets */
+  .contact-pill { width: 100%; justify-content: center; }
+
+  /* CTA band: stacked full-width buttons */
+  .cta-band .btn-row { flex-direction: column; align-items: center; }
+  .cta-band .btn-row .btn { width: min(340px, 100%); }
+
+  /* Forms & cards */
+  .form-card { padding: 26px 22px; }
+  .listing-toolbar { padding: 12px 14px; }
+  .results-count { margin-left: 0; width: 100%; }
+
+  /* Footer: left-aligned, tidy */
+  .footer-bottom { justify-content: flex-start; }
+  .footer-grid { margin-bottom: 40px; }
+
+  /* Property detail facts: two per row */
+  .pd-facts > div { flex: 1 1 calc(50% - 6px); }
+  .pd-sticky { position: static; }
+}
+
+/* --- Small phones (≤ 400px) --- */
+@media (max-width: 400px) {
+  .hero h1 { font-size: 38px; }
+  .hero-stats { gap: 22px 12px; }
+  .btn { padding: 14px 24px; }
+}
+
+/* ============================================================
+   CINEMATIC PRELOADER — homepage load-in (Jul 2026)
+   Counter + brand reveal + curtain lift + hero settle
+   ============================================================ */
+html.pl-active { overflow: hidden; }
+
+.preloader {
+  position: fixed; inset: 0; z-index: 5000;
+  background: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 1.15s cubic-bezier(.76, 0, .24, 1);
+  will-change: transform;
+}
+html.pl-done .preloader { transform: translateY(-101%); }
+
+/* Subtle warm glow behind the lockup */
+.preloader::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(640px 340px at 50% 52%, rgba(185,154,95,.14), transparent 65%);
+}
+
+.pl-inner {
+  position: relative; text-align: center; padding: 0 24px;
+  transition: opacity .55s var(--ease), transform .9s var(--ease);
+}
+html.pl-done .pl-inner { opacity: 0; transform: translateY(-36px); }
+
+.pl-mono {
+  font-family: var(--font-display); font-size: 15px; letter-spacing: .34em;
+  color: var(--brass-soft); margin-bottom: 22px;
+  opacity: 0; animation: plFade .9s var(--ease) .15s forwards;
+}
+
+.pl-name {
+  font-family: var(--font-display); font-weight: 480;
+  font-size: clamp(38px, 7vw, 74px); line-height: 1.08;
+  color: var(--white); letter-spacing: -0.01em;
+}
+.pl-name .pl-w { display: inline-block; overflow: hidden; vertical-align: bottom; }
+.pl-name .pl-l {
+  display: inline-block; transform: translateY(115%);
+  animation: plRise .9s cubic-bezier(.22,.61,.36,1) forwards;
+}
+.pl-name em { font-style: italic; color: var(--brass-soft); }
+
+.pl-rule {
+  width: 0; height: 1px; background: var(--brass);
+  margin: 26px auto 20px;
+  animation: plRule 1s var(--ease) .8s forwards;
+}
+.pl-sub {
+  font-size: 11px; font-weight: 600; letter-spacing: .34em; text-transform: uppercase;
+  color: rgba(255,255,255,.55);
+  opacity: 0; animation: plFade 1s var(--ease) 1.05s forwards;
+}
+
+.pl-count {
+  position: absolute; left: clamp(24px, 4vw, 56px); bottom: clamp(22px, 4vw, 48px);
+  font-family: var(--font-display); font-size: clamp(44px, 6vw, 84px);
+  color: var(--brass-soft); font-weight: 480; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  opacity: 0; animation: plFade .6s var(--ease) .2s forwards;
+}
+.pl-count::after {
+  content: "%"; font-size: .38em; color: rgba(255,255,255,.45);
+  margin-left: 6px; vertical-align: super;
+}
+
+@keyframes plRise { to { transform: none; } }
+@keyframes plFade { to { opacity: 1; } }
+@keyframes plRule { to { width: 64px; } }
+
+/* --- Hero cinematic entrance (fires as the curtain lifts) --- */
+html.pl-active .hero-bg img { transform: scale(1.09); }
+html.pl-done .hero-bg img {
+  transform: scale(1);
+  transition: transform 2.6s cubic-bezier(.22,.61,.36,1) .15s;
+}
+html.pl-active .hero .eyebrow,
+html.pl-active .hero h1,
+html.pl-active .hero-sub,
+html.pl-active .hero-search,
+html.pl-active .hero-stats { opacity: 0; transform: translateY(30px); }
+html.pl-done .hero .eyebrow,
+html.pl-done .hero h1,
+html.pl-done .hero-sub,
+html.pl-done .hero-search,
+html.pl-done .hero-stats {
+  opacity: 1; transform: none;
+  transition: opacity .9s var(--ease), transform 1s var(--ease);
+}
+html.pl-done .hero .eyebrow { transition-delay: .45s; }
+html.pl-done .hero h1 { transition-delay: .55s; }
+html.pl-done .hero-sub { transition-delay: .68s; }
+html.pl-done .hero-search { transition-delay: .82s; }
+html.pl-done .hero-stats { transition-delay: .95s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .preloader { display: none; }
+  html.pl-active .hero .eyebrow, html.pl-active .hero h1, html.pl-active .hero-sub,
+  html.pl-active .hero-search, html.pl-active .hero-stats { opacity: 1; transform: none; }
+  html.pl-active .hero-bg img { transform: none; }
+  html.pl-active { overflow: auto; }
+}
+
+/* ============================================================
+   AI SYNDICATE ATTRIBUTION (standing standard)
+   ============================================================ */
+.ai-syndicate-credit {
+  font-size: 12px;
+  opacity: 0.55;
+  text-align: center;
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+}
+.ai-syndicate-credit a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+}
+.ai-syndicate-credit a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}

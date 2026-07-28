@@ -13,6 +13,80 @@
 </head>
 <body>
 
+<div class="preloader" id="preloader" aria-hidden="true">
+  <div class="pl-count" data-pl-count>0</div>
+  <div class="pl-inner">
+    <div class="pl-mono">MC</div>
+    <div class="pl-name" data-pl-name>Michelle <em>Creamer</em></div>
+    <div class="pl-rule"></div>
+    <div class="pl-sub">ARC Realty &middot; Liberty Park &middot; Est. 2002</div>
+  </div>
+</div>
+<script>
+(function () {
+  var html = document.documentElement;
+  var pl = document.getElementById('preloader');
+  if (!pl || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (pl) pl.remove();
+    return;
+  }
+  html.classList.add('pl-active');
+
+  /* Split the name into letters that rise in, one by one */
+  var name = pl.querySelector('[data-pl-name]');
+  var delay = 0.18;
+  Array.prototype.slice.call(name.childNodes).forEach(function (node) {
+    if (node.nodeType !== 3 && node.tagName !== 'EM') return;
+    var isEm = node.nodeType !== 3;
+    var text = node.textContent;
+    var frag = document.createDocumentFragment();
+    text.split('').forEach(function (ch) {
+      if (ch === ' ') { frag.appendChild(document.createTextNode(' ')); return; }
+      var w = document.createElement('span'); w.className = 'pl-w';
+      var l = document.createElement('span'); l.className = 'pl-l';
+      l.style.animationDelay = delay.toFixed(2) + 's';
+      l.textContent = ch;
+      if (isEm) { var em = document.createElement('em'); em.appendChild(l); w.appendChild(em); }
+      else { w.appendChild(l); }
+      frag.appendChild(w);
+      delay += 0.045;
+    });
+    name.replaceChild(frag, node);
+  });
+
+  /* Eased 0 → 100 counter */
+  var counter = pl.querySelector('[data-pl-count]');
+  var t0 = null, DUR = 1900;
+  function tick(ts) {
+    if (!t0) t0 = ts;
+    var p = Math.min((ts - t0) / DUR, 1);
+    var eased = 1 - Math.pow(1 - p, 3); /* ease-out cubic */
+    counter.textContent = Math.round(eased * 100);
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* Lift the curtain once the count lands and the page is ready */
+  var finished = false;
+  function done() {
+    if (finished) return;
+    finished = true;
+    html.classList.add('pl-done');
+    setTimeout(function () {
+      pl.remove();
+      html.classList.remove('pl-active');
+    }, 1300);
+  }
+  var minShow = new Promise(function (r) { setTimeout(r, DUR + 350); });
+  var loaded = new Promise(function (r) {
+    if (document.readyState === 'complete') r();
+    else window.addEventListener('load', r);
+  });
+  Promise.all([minShow, loaded]).then(done);
+  setTimeout(done, 6000); /* failsafe: never trap the visitor */
+})();
+</script>
+
 <div class="nav-wrap">
   <nav class="nav" aria-label="Main">
     <a class="nav-brand" href="index.html">
@@ -70,13 +144,13 @@
 
 
 <header class="hero">
-  <div class="hero-bg"><img src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=2000&q=80" alt="Luxury brick estate at dusk in Liberty Park, Vestavia Hills" onerror="this.remove()"></div>
+  <div class="hero-bg"><img src="img/hero-liberty-park-entrance.jpg" alt="The stone entrance to Liberty Park in Vestavia Hills, Alabama" onerror="this.remove()"></div>
   <div class="container">
     <div class="eyebrow">Liberty Park &middot; Vestavia Hills &middot; Birmingham</div>
     <h1>Your Pathway <em>Home</em></h1>
     <p class="hero-sub">Michelle Creamer is the #1 sales agent in Vestavia Hills — a Liberty Park resident of 20+ years who has guided her neighbors home since 2002.</p>
     <form class="hero-search" data-quick-search>
-      <input type="text" placeholder="Search by address, city, zip, neighborhood, or MLS#" aria-label="Property search">
+      <input type="text" placeholder="Address, city, zip, or MLS#" aria-label="Property search">
       <button class="btn brass" type="submit">Search</button>
     </form>
     <div class="hero-stats">
@@ -92,7 +166,7 @@
   <div class="container">
     <div class="agent-card">
       <div class="agent-photo reveal">
-        <img src="https://cdn.datafloat.com/ARC_PUBLIC/image_cache/AGENT/PICTURE/F6E/F6EAED79-2B33-472B-9095-E47D0356AC7A_1.jpg?mw=800&mh=800" alt="Michelle Creamer, Realtor and Associate Broker, ARC Realty" onerror="this.remove()">
+        <img src="img/michelle-sold-portrait.jpg" alt="Michelle Creamer in a green dress holding a Sold by Michelle sign" onerror="this.remove()">
         <div class="badge">#1 Sales Agent &middot; Vestavia Hills</div>
       </div>
       <div class="agent-info">
@@ -174,7 +248,7 @@
       </div>
       <div class="phone-mock reveal reveal-d1">
         <div class="screen">
-          <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80" alt="" onerror="this.remove()">
+          <img src="img/vestlake-lake.jpg" alt="Lakefront home on a Vestlake lake in Liberty Park" onerror="this.remove()">
           <div class="s-body">
             <div class="s-price">$729,900</div>
             <div class="s-line"></div>
@@ -196,7 +270,7 @@
     </div>
     <div class="community-grid">
       <a class="community-card reveal" href="liberty-park.html">
-        <img src="https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1200&q=80" alt="Liberty Park homes" onerror="this.remove()">
+        <img src="img/card-waterfall.jpg" alt="Waterfall feature in Liberty Park, Vestavia Hills" onerror="this.remove()">
         <div class="cc-body">
           <div class="cc-region">Birmingham &middot; Vestavia Hills</div>
           <h3>Liberty Park</h3>
@@ -205,7 +279,7 @@
         </div>
       </a>
       <a class="community-card reveal reveal-d1" href="liberty-park.html#old-overton">
-        <img src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?auto=format&fit=crop&w=1200&q=80" alt="Old Overton golf course" onerror="this.remove()">
+        <img src="img/card-club-aerial.jpg" alt="Aerial view of club pool and tennis facilities in Liberty Park" onerror="this.remove()">
         <div class="cc-body">
           <div class="cc-region">Gated &middot; Golf</div>
           <h3>Old Overton</h3>
@@ -214,7 +288,7 @@
         </div>
       </a>
       <a class="community-card reveal reveal-d2" href="liberty-park.html#the-bray">
-        <img src="https://images.unsplash.com/photo-1605146769289-440113cc3d00?auto=format&fit=crop&w=1200&q=80" alt="The Bray at Liberty Park new construction" onerror="this.remove()">
+        <img src="img/card-green-space.jpg" alt="Green space and parkland in Liberty Park" onerror="this.remove()">
         <div class="cc-body">
           <div class="cc-region">New Construction</div>
           <h3>The Bray</h3>
@@ -323,6 +397,7 @@
         <a href="https://arcrealtydashboard.com/ARC/login.zul" target="_blank" rel="noopener">Agent Login</a>
       </div>
     </div>
+    <p class="ai-syndicate-credit">GEO Optimization by <a href="https://aisyndicate.com" target="_blank" rel="noopener">AI Syndicate</a></p>
   </div>
 </footer>
 

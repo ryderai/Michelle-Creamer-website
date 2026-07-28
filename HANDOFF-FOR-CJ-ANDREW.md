@@ -50,3 +50,13 @@ GEO package (schema, llms.txt, agents.md, meta tags, .md endpoints, sitemap, rob
 
 ## Verified Jul 21
 All 25 pages: HTML balanced, internal links resolve, CSS braces balanced, JS syntax clean (node --check), listings.json valid, every page filter renders cards (featured 12 / sold 10 / open houses 3 / new construction 2 / commercial 2 / lots 3 / luxury 1). Stock images not verifiable from sandbox — eyeball in browser.
+
+## Real photos installed — Jul 27 2026
+- Michelle's 6 professional portraits (Dropbox "Michelle Creamer 7.2.24") + 25 Liberty Park amenity photos are now live across the site, web-optimized in `img/` (originals kept in `photos/`).
+- Homepage: real hero (Liberty Park entrance), Michelle's real portrait on the agent card, real community-card photos.
+- Liberty Park page: real waterfall hero + new 9-photo "Liberty Park, in Photos" gallery.
+- Marketing Your Home: hero is Michelle holding her "Sold by Michelle" sign.
+- Luxury, Communities, About Us: all real photos now.
+- Spares not yet placed: michelle-dog.jpg, michelle-kitchen.jpg, g-school-2.jpg (in img/, ready if wanted).
+- FOR MICHELLE TO CONFIRM: the aerial pool/tennis photo used on the Old Overton cards — is that the right club? Easy swap if not.
+- Still stock on purpose: blog post thumbnails, new-construction photo (no matching real photos yet).
