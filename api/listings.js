@@ -223,28 +223,25 @@ export default async function handler(req, res) {
   const agentId = process.env.MLS_AGENT_MLS_ID;
 
   try {
-    const statuses = Object.keys(STATUS_MAP)
-      .filter(s => !s.includes(" "))
-      .map(s => `StandardStatus eq '${s}'`)
-      .join(" or ");
+    // GALMLS's OData rejects $expand=Media (501) and 500s on non-standard status
+    // tokens. Use the STANDARD DD status values (spaced), no $expand, and never
+    // fall back to an unfiltered query — returning other agents'/sold listings as
+    // site inventory would violate IDX display + attribution rules.
+    const agentClause = (scope === "agent" && agentId)
+      ? ` and (ListAgentMlsId eq '${agentId}' or CoListAgentMlsId eq '${agentId}')`
+      : "";
+    const statusFilter = (arr) => "(" + arr.map(s => `StandardStatus eq '${s}'`).join(" or ") + ")";
+    const FOR_SALE = ["Active", "Active Under Contract", "Coming Soon", "Pending"];
 
-    const clauses = [`(${statuses})`];
-    if (scope === "agent" && agentId) {
-      clauses.push(`(ListAgentMlsId eq '${agentId}' or CoListAgentMlsId eq '${agentId}')`);
+    // Progressively narrower filters, all with valid enum values, orderby optional.
+    const filters = [statusFilter(FOR_SALE), statusFilter(["Active", "Pending"]), statusFilter(["Active"])];
+    const variants = [];
+    for (const f of filters) {
+      const base = `Property?$filter=${encodeURIComponent(f + agentClause)}`;
+      variants.push(`${base}&$orderby=ModificationTimestamp desc&$top=${PAGE_SIZE}`);
+      variants.push(`${base}&$top=${PAGE_SIZE}`);
     }
 
-    const filter = encodeURIComponent(clauses.join(" and "));
-    // Paragon's OData is inconsistent about which query options it supports
-    // ($expand=Media and $orderby are the usual offenders — and it often
-    // answers 500 rather than a clean 400). Try progressively simpler variants
-    // and use the first that responds, so one deploy works regardless.
-    const variants = [
-      `Property?$filter=${filter}&$orderby=ModificationTimestamp desc&$expand=Media&$top=${PAGE_SIZE}`,
-      `Property?$filter=${filter}&$orderby=ModificationTimestamp desc&$top=${PAGE_SIZE}`,
-      `Property?$filter=${filter}&$expand=Media&$top=${PAGE_SIZE}`,
-      `Property?$filter=${filter}&$top=${PAGE_SIZE}`,
-      `Property?$top=${PAGE_SIZE}`
-    ];
     let raw = null, usedVariant = -1;
     const attempts = [];
     for (let i = 0; i < variants.length; i++) {
@@ -256,7 +253,7 @@ export default async function handler(req, res) {
         attempts.push(`v${i}: ${err.message.slice(0, 160)}`);
       }
     }
-    if (raw === null) throw new Error("ODATA all variants failed :: " + attempts.join(" | "));
+    if (raw === null) throw new Error("ODATA all filtered variants failed :: " + attempts.join(" | "));
 
     const listings = raw.map(normalize).filter(Boolean);
     await attachOpenHouses(listings);
