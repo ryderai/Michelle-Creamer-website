@@ -233,25 +233,30 @@ export default async function handler(req, res) {
       clauses.push(`(ListAgentMlsId eq '${agentId}' or CoListAgentMlsId eq '${agentId}')`);
     }
 
-    const query =
-      `Property?$filter=${encodeURIComponent(clauses.join(" and "))}` +
-      `&$orderby=ModificationTimestamp desc` +
-      `&$expand=Media` +
-      `&$top=${PAGE_SIZE}`;
-
-    let raw;
-    try {
-      raw = await odataAll(query);
-    } catch (err) {
-      // Some Paragon servers don't certify $expand. Retry without it —
-      // listings render with a fallback image rather than failing outright.
-      if (/expand/i.test(err.message) || /501|400/.test(err.message)) {
-        console.warn("[idx] $expand=Media rejected, retrying without media");
-        raw = await odataAll(query.replace("&$expand=Media", ""));
-      } else {
-        throw err;
+    const filter = encodeURIComponent(clauses.join(" and "));
+    // Paragon's OData is inconsistent about which query options it supports
+    // ($expand=Media and $orderby are the usual offenders — and it often
+    // answers 500 rather than a clean 400). Try progressively simpler variants
+    // and use the first that responds, so one deploy works regardless.
+    const variants = [
+      `Property?$filter=${filter}&$orderby=ModificationTimestamp desc&$expand=Media&$top=${PAGE_SIZE}`,
+      `Property?$filter=${filter}&$orderby=ModificationTimestamp desc&$top=${PAGE_SIZE}`,
+      `Property?$filter=${filter}&$expand=Media&$top=${PAGE_SIZE}`,
+      `Property?$filter=${filter}&$top=${PAGE_SIZE}`,
+      `Property?$top=${PAGE_SIZE}`
+    ];
+    let raw = null, usedVariant = -1;
+    const attempts = [];
+    for (let i = 0; i < variants.length; i++) {
+      try {
+        raw = await odataAll(variants[i]);
+        usedVariant = i;
+        break;
+      } catch (err) {
+        attempts.push(`v${i}: ${err.message.slice(0, 160)}`);
       }
     }
+    if (raw === null) throw new Error("ODATA all variants failed :: " + attempts.join(" | "));
 
     const listings = raw.map(normalize).filter(Boolean);
     await attachOpenHouses(listings);
@@ -265,6 +270,8 @@ export default async function handler(req, res) {
         displayedCount: listings.length,
         byStatus: listings.reduce((a, l) => ((a[l.status] = (a[l.status] || 0) + 1), a), {}),
         withPhotos: listings.filter(l => l.photos.length).length,
+        usedVariant,
+        attempts,
         sampleAgentIds: [...new Set(raw.map(r => r.ListAgentMlsId).filter(Boolean))].slice(0, 10),
         ms: Date.now() - started
       });
