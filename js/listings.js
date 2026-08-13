@@ -10,11 +10,12 @@
    ============================================================ */
 
 const LISTINGS_API = {
-  mode: "local",                 // "local" = data/listings.json | "live" = real feed
+  mode: "live",                  // "local" = data/listings.json | "live" = real feed
   localPath: "data/listings.json",
-  endpoint: "",                  // e.g. https://api.mlsgrid.com/v2/Property?...
-  apiKey: "",                    // provided by Andrew when the feed is licensed
-  headers: {}                    // extra auth headers if the feed needs them
+  endpoint: "/api/listings",     // our own serverless proxy (api/listings.js) — holds the
+                                 // Paragon/GALMLS credentials server-side, never in the browser
+  apiKey: "",                    // INTENTIONALLY EMPTY — MLS creds live in Vercel env vars
+  headers: {}
 };
 
 /* Map a raw feed record to the shape every page renders.
@@ -39,9 +40,14 @@ function normalizeListing(raw) {
     newConstruction: !!raw.newConstruction,
     openHouse: raw.openHouse || null,
     photo: raw.photo,
+    photos: raw.photos || [],
     blurb: raw.blurb || "",
-    description: raw.description || "",   // full MLS remarks (live feed: map to PublicRemarks)
-    details: raw.details || null          // detail sections (live feed: map to feed fields)
+    description: raw.description || "",   // full MLS remarks (live feed: PublicRemarks)
+    details: raw.details || null,
+    // IDX attribution — required on display; falls back to Michelle for local demo data
+    listOffice: raw.listOffice || "ARC Realty",
+    listAgent: raw.listAgent || "Michelle Creamer",
+    listOfficePhone: raw.listOfficePhone || ""
   };
 }
 
@@ -117,7 +123,9 @@ function listingCard(l) {
         '<div class="lc-price">' + fmtPrice(l.price) + (l.type === "rental" ? '<span style="font-size:15px;color:var(--text-soft)">/mo</span>' : "") + "</div>" +
         '<div class="lc-address">' + l.address + '<span class="city">' + l.city + ", " + l.state + " " + l.zip + "</span></div>" +
         '<div class="lc-specs">' + specs.join("") + "</div>" +
-        '<div class="lc-mls">MLS# ' + l.mls.replace("PLACEHOLDER-", "") + " · Listed by Michelle Creamer, ARC Realty</div>" +
+        '<div class="lc-mls">MLS# ' + l.mls.replace("PLACEHOLDER-", "") +
+          " · Listed by " + (l.listAgent || "Michelle Creamer") +
+          (l.listOffice ? ", " + l.listOffice : "") + "</div>" +
         '<div class="lc-cta"><a class="text-link" href="' + url + '">View Property</a></div>' +
       "</div>" +
     "</article>"
