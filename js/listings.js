@@ -299,18 +299,23 @@ function listingCard(l) {
   return (
     '<article class="listing-card reveal">' +
       '<a class="' + slotClass + '" href="' + url + '"' + slotAttrs + ">" +
-        '<button class="lc-save' + (saved ? " on" : "") + '" data-id="' + l.id + '" aria-label="Save this home" title="Save this home">&#10084;</button>' +
+        '<button class="lc-save' + (saved ? " on" : "") + '" data-id="' + esc(l.id) + '" aria-label="Save this home" title="Save this home">&#10084;</button>' +
         '<div class="lc-chips">' + chips.join("") + "</div>" +
         '<span class="lc-photo-note" aria-hidden="true"></span>' +
         media +
       "</a>" +
       '<div class="lc-body">' +
         '<div class="lc-price">' + fmtPrice(l.price) + (l.type === "rental" ? '<span style="font-size:15px;color:var(--text-soft)">/mo</span>' : "") + "</div>" +
-        '<div class="lc-address">' + l.address + '<span class="city">' + l.city + ", " + l.state + " " + l.zip + "</span></div>" +
+        /* Every value below is MLS text going into innerHTML, so every one is
+           escaped. An apostrophe in a street name or an angle bracket in an
+           office name would otherwise break the card, and the feed is not
+           ours to trust. */
+        '<div class="lc-address">' + esc(l.address) +
+          '<span class="city">' + esc(l.city) + ", " + esc(l.state) + " " + esc(l.zip) + "</span></div>" +
         '<div class="lc-specs">' + specs.join("") + "</div>" +
-        '<div class="lc-mls">MLS# ' + l.mls.replace("PLACEHOLDER-", "") +
-          " · Listed by " + (l.listAgent || "Michelle Creamer") +
-          (l.listOffice ? ", " + l.listOffice : "") + "</div>" +
+        '<div class="lc-mls">MLS# ' + esc(String(l.mls || "").replace("PLACEHOLDER-", "")) +
+          " · Listed by " + esc(l.listAgent || "Michelle Creamer") +
+          (l.listOffice ? ", " + esc(l.listOffice) : "") + "</div>" +
         '<div class="lc-cta"><a class="text-link" href="' + url + '">View Property</a></div>' +
       "</div>" +
     "</article>"
@@ -398,20 +403,30 @@ const SERVER_FILTER_PARAMS = {
   "all":              {}
 };
 
-function pagerHtml(page, pageSize, total, returned) {
-  const from = total ? (page - 1) * pageSize + 1 : 0;
+function pagerHtml(page, pageSize, total, returned, hasMore, countKnown) {
+  const from = returned ? (page - 1) * pageSize + 1 : 0;
   const to   = (page - 1) * pageSize + returned;
   const last = Math.max(Math.ceil(total / pageSize), 1);
+
+  /* The MLS total is fetched separately and cached. If it is briefly
+     unavailable, paging still works — the pager just stops promising a total
+     rather than printing a number it does not have. */
+  let label;
+  if (!returned) label = "No matching properties";
+  else if (countKnown === false) {
+    label = "Showing <b>" + from.toLocaleString("en-US") + "&ndash;" + to.toLocaleString("en-US") + "</b>" +
+            '<span class="lc-pager-page">Page ' + page + "</span>";
+  } else {
+    label = "Showing <b>" + from.toLocaleString("en-US") + "&ndash;" + to.toLocaleString("en-US") +
+            "</b> of <b>" + total.toLocaleString("en-US") + "</b>" +
+            '<span class="lc-pager-page">Page ' + page + " of " + last.toLocaleString("en-US") + "</span>";
+  }
+
   return (
     '<div class="lc-pager">' +
       '<button class="btn ghost sm" data-page-prev' + (page <= 1 ? " disabled" : "") + ">&larr; Previous</button>" +
-      '<span class="lc-pager-count">' +
-        (total ? "Showing <b>" + from.toLocaleString("en-US") + "&ndash;" + to.toLocaleString("en-US") +
-                 "</b> of <b>" + total.toLocaleString("en-US") + "</b>" +
-                 '<span class="lc-pager-page">Page ' + page + " of " + last.toLocaleString("en-US") + "</span>"
-               : "No matching properties") +
-      "</span>" +
-      '<button class="btn ghost sm" data-page-next' + (to >= total ? " disabled" : "") + ">Next &rarr;</button>" +
+      '<span class="lc-pager-count">' + label + "</span>" +
+      '<button class="btn ghost sm" data-page-next' + (hasMore ? "" : " disabled") + ">Next &rarr;</button>" +
     "</div>"
   );
 }
@@ -471,7 +486,8 @@ function initServerGrid(grid) {
 
     if (!limit) {
       pager.innerHTML = list.length || pageNo > 1
-        ? pagerHtml(data.page || pageNo, data.pageSize || pageSize, data.total || 0, list.length)
+        ? pagerHtml(data.page || pageNo, data.pageSize || pageSize, data.total || 0,
+                    list.length, Boolean(data.hasMore), data.countKnown)
         : "";
       const prev = pager.querySelector("[data-page-prev]");
       const next = pager.querySelector("[data-page-next]");

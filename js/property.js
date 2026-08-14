@@ -52,7 +52,8 @@
 
   function factRow(label, value) {
     if (value == null || value === "") return "";
-    return '<div class="pd-row"><span>' + label + "</span><b>" + value + "</b></div>";
+    // label and value can both come from the MLS feed
+    return '<div class="pd-row"><span>' + escAttr(label) + "</span><b>" + escAttr(value) + "</b></div>";
   }
 
   function detailSection(title, rows) {
@@ -90,18 +91,19 @@
 
     // ---- header
     $("#pd-head").innerHTML =
-      '<nav class="breadcrumb" style="color:var(--text-soft)"><a href="index.html">Home</a><span>/</span><a href="property-search.html">Property Search</a><span>/</span><span>' + l.address + "</span></nav>" +
-      "<h1>" + l.address + '</h1><p class="pd-city">' + l.city + ", " + l.state + " " + l.zip + (l.community ? " · " + l.community : "") + "</p>" +
+      /* All MLS text into innerHTML, so all of it escaped. */
+      '<nav class="breadcrumb" style="color:var(--text-soft)"><a href="index.html">Home</a><span>/</span><a href="property-search.html">Property Search</a><span>/</span><span>' + escAttr(l.address) + "</span></nav>" +
+      "<h1>" + escAttr(l.address) + '</h1><p class="pd-city">' + escAttr(l.city) + ", " + escAttr(l.state) + " " + escAttr(l.zip) + (l.community ? " · " + escAttr(l.community) : "") + "</p>" +
       '<div class="pd-price">' + priceStr + "</div>" +
       '<div class="pd-facts">' +
       (l.beds != null ? '<div><b>' + l.beds + "</b><span>Beds</span></div>" : "") +
       (l.baths != null ? '<div><b>' + l.baths + "</b><span>Baths</span></div>" : "") +
       (l.sqft != null ? '<div><b>' + fmtSqft(l.sqft) + "</b><span>Sq. Ft.</span></div>" : "") +
-      '<div><b>' + l.mls.replace("PLACEHOLDER-", "") + "</b><span>MLS#</span></div>" +
+      '<div><b>' + escAttr(String(l.mls || "").replace("PLACEHOLDER-", "")) + "</b><span>MLS#</span></div>" +
       "</div>";
 
     // ---- description
-    $("#pd-desc").innerHTML = "<p>" + (l.description || l.blurb || "") + "</p>" +
+    $("#pd-desc").innerHTML = "<p>" + escAttr(l.description || l.blurb || "").replace(/\n/g, "<br>") + "</p>" +
       (l.description ? "" : '<p class="pd-note">Full MLS remarks, photos, and property details will populate automatically when the live listing feed is connected.</p>');
 
     // ---- detail sections (her site's exact section order)
@@ -110,7 +112,7 @@
       detailSection("General", [
         ["Property Type", l.type === "single-family" ? "Single Family" : l.type === "townhome" ? "Townhome / Condo" : l.type === "lot" ? "Lot / Land" : l.type === "rental" ? "Residential Rental" : "Commercial"],
         ["Status", STATUS_LABEL[l.status]],
-        ["MLS#", l.mls.replace("PLACEHOLDER-", "")],
+        ["MLS#", String(l.mls || "").replace("PLACEHOLDER-", "")],
         ["List Price", priceStr],
         ["List Date", d.listDate], ["Year Built", d.yearBuilt], ["County", d.county],
         ["Area", d.area], ["Subdivision", d.subdivision || l.community],
@@ -128,7 +130,10 @@
 
     // ---- form prefill
     const msg = $("#pd-form textarea");
-    if (msg) msg.value = "I'd like more information about " + l.address + ", " + l.city + " (MLS# " + l.mls.replace("PLACEHOLDER-", "") + ").";
+    // .value is a text property, so no escaping needed — but l.mls can be
+    // absent on a thin feed record, and .replace() on undefined throws.
+    if (msg) msg.value = "I'd like more information about " + l.address + ", " + l.city +
+      " (MLS# " + String(l.mls || "").replace("PLACEHOLDER-", "") + ").";
 
     // ---- mortgage calculator
     if (l.type !== "rental" && l.status !== "sold") initCalc(l.price);

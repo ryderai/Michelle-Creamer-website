@@ -260,28 +260,37 @@ function buildAttempts({ required, optional }, { top, skip, orderby }) {
   for (let drop = 0; drop <= optional.length; drop++) {
     const kept = optional.slice(0, optional.length - drop);
     const filter = [...required, ...kept].join(" and ");
-    let path = `Property?$filter=${encodeURIComponent(filter)}&$count=true&$top=${top}`;
+    /* Deliberately NO $count=true here. Counting 12,665 matching rows is the
+       single slowest thing this endpoint can ask for, and the number is only
+       needed for the pager. It is fetched separately and cached — see
+       countFor(). */
+    let path = `Property?$filter=${encodeURIComponent(filter)}&$top=${top}`;
     if (skip) path += `&$skip=${skip}`;
     if (orderby) path += `&$orderby=${encodeURIComponent(orderby)}`;
-    attempts.push({ path, dropped: drop, keptOptional: kept.length });
+    attempts.push({ path, filter, dropped: drop, keptOptional: kept.length });
     if (orderby) {
       // Some servers reject $orderby on certain fields; keep the same filter
       // but let go of the sort before giving up any of the search terms.
       attempts.push({ path: path.replace(`&$orderby=${encodeURIComponent(orderby)}`, ""),
-                      dropped: drop, keptOptional: kept.length, noSort: true });
+                      filter, dropped: drop, keptOptional: kept.length, noSort: true });
     }
   }
   return attempts;
 }
 
-/* ---------- open houses (separate RESO resource; optional on some servers) ---------- */
+/* ---------- open houses (separate RESO resource; optional on some servers) ----------
+   Asks only about the listings on THIS page. The first version pulled 500
+   upcoming open houses on every single request, which was a large part of an
+   11.6-second response. A page of 24 needs 24 keys, not the whole calendar. */
 async function attachOpenHouses(listings) {
   if (!listings.length) return;
   try {
     const now = new Date().toISOString().split(".")[0] + "Z";
+    const keys = listings.slice(0, 60).map(l => l.id);
+    const keyClause = "(" + keys.map(k => `ListingKey eq ${q(k)}`).join(" or ") + ")";
     const page = await odata(
-      `OpenHouse?$filter=${encodeURIComponent(`OpenHouseStartTime gt ${now}`)}` +
-      `&$select=ListingKey,OpenHouseStartTime,OpenHouseEndTime&$top=500`);
+      `OpenHouse?$filter=${encodeURIComponent(`OpenHouseStartTime gt ${now} and ${keyClause}`)}` +
+      `&$select=ListingKey,OpenHouseStartTime,OpenHouseEndTime&$top=${keys.length * 4}`);
     const byKey = new Map();
     for (const oh of (page.value || [])) {
       const key = String(oh.ListingKey);
@@ -321,6 +330,33 @@ async function openHouseListings(limit) {
                  " and (StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
   const res = await odata(`Property?$filter=${encodeURIComponent(filter)}&$count=true&$top=${keys.length}`);
   return { rows: res.value || [], total: res["@odata.count"] ?? (res.value || []).length };
+}
+
+/* ---------- how many listings match, cached ----------
+   `$count=true` over 12,665 rows is the slowest single thing this endpoint can
+   ask the MLS for, and the answer only feeds the pager. So it is fetched with
+   its own tiny request, cached per filter for the life of the warm instance,
+   and refreshed on a timer. A visitor paging through results pays for it once.
+   If the count is unavailable the endpoint still returns listings — the pager
+   just falls back to "keep going while there are more pages". */
+const _countCache = new Map();          // filter string -> { total, at }
+const COUNT_TTL = 15 * 60 * 1000;       // 15 minutes
+
+async function countFor(filter) {
+  const hit = _countCache.get(filter);
+  if (hit && Date.now() - hit.at < COUNT_TTL) return { total: hit.total, cached: true };
+  try {
+    const r = await odata(`Property?$filter=${encodeURIComponent(filter)}&$top=1&$count=true`);
+    const total = r["@odata.count"] ?? null;
+    if (total != null) {
+      _countCache.set(filter, { total, at: Date.now() });
+      if (_countCache.size > 200) _countCache.delete(_countCache.keys().next().value);
+    }
+    return { total, cached: false };
+  } catch (err) {
+    console.warn("[idx] count unavailable:", err.message.slice(0, 120));
+    return { total: null, cached: false };
+  }
 }
 
 /* ---------- probe: what does this MLS actually accept? ---------- */
@@ -403,21 +439,33 @@ export default async function handler(req, res) {
     const skip = isSearch ? (page - 1) * pageSize : 0;
     const orderby = SORTS[p.sort] || SORTS.newest;
 
-    let rows = [], total = null, usedAttempt = -1, droppedFilters = 0;
+    let rows = [], total = null, usedAttempt = -1, droppedFilters = 0, countCached = null;
     const attempts = [];
+    const t = {};
+    const mark = (k, from) => { t[k] = Date.now() - from; };
 
     if (p.openHouse === "1") {
+      const t0 = Date.now();
       const oh = await openHouseListings(pageSize);
       rows = oh.rows; total = oh.total; usedAttempt = 0;
+      mark("openHouseQuery", t0);
     } else {
       const clauses = buildClauses({ ...p, scope }, agentId);
       const plan = buildAttempts(clauses, { top: pageSize, skip, orderby });
 
+      const t0 = Date.now();
       for (let i = 0; i < plan.length; i++) {
         try {
-          const r = await odata(plan[i].path);
+          /* The page of listings and the total count go out together, so the
+             visitor waits for the slower of the two rather than the sum. On a
+             warm instance the count is already cached and costs nothing. */
+          const [r, c] = await Promise.all([
+            odata(plan[i].path),
+            isSearch ? countFor(plan[i].filter) : Promise.resolve({ total: null, cached: null })
+          ]);
           rows = r.value || [];
-          total = r["@odata.count"] ?? null;
+          total = c.total;
+          countCached = c.cached;
           usedAttempt = i;
           droppedFilters = plan[i].dropped;
           break;
@@ -425,15 +473,22 @@ export default async function handler(req, res) {
           attempts.push(`a${i}: ${err.message.slice(0, 130)}`);
         }
       }
+      mark("listingQuery", t0);
       if (usedAttempt === -1) {
         throw new Error("ODATA every filter variant failed :: " + attempts.join(" | "));
       }
     }
 
     const listings = rows.map(r => normalize(r, { lean: isSearch })).filter(Boolean);
+    const t1 = Date.now();
     await attachOpenHouses(listings);
+    mark("openHouses", t1);
 
-    if (total == null) total = listings.length;
+    /* No count available (cached miss + MLS refused): fall back to "there is
+       another page if this one came back full". The pager keeps working, it
+       just cannot say "of 12,665". */
+    const countKnown = total != null;
+    if (!countKnown) total = skip + listings.length + (listings.length === pageSize ? pageSize : 0);
     const hasMore = isSearch ? skip + listings.length < total : false;
 
     if (p.debug) {
@@ -447,6 +502,8 @@ export default async function handler(req, res) {
         droppedFilters,
         usedAttempt,
         attempts,
+        countKnown, countCached,
+        timing: t,
         byStatus: listings.reduce((a, l) => ((a[l.status] = (a[l.status] || 0) + 1), a), {}),
         mlsSaysHasPhotos: listings.filter(l => (l.photosCount || 0) > 0).length,
         ms: Date.now() - started
@@ -462,6 +519,7 @@ export default async function handler(req, res) {
       page,
       pageSize,
       hasMore,
+      countKnown,
       /* If the MLS rejected part of the search, say so. The page tells the
          visitor rather than quietly showing them the wrong results. */
       droppedFilters,
