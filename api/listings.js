@@ -391,33 +391,27 @@ async function probeSpeed(res) {
   const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
   const f = encodeURIComponent(base);
   const sel = encodeURIComponent(selectFor(true));
-  const agent = process.env.MLS_AGENT_MLS_ID;
 
+  /* Kept deliberately short. An earlier version timed eleven shapes back to
+     back and the function itself hit a 504 — each GALMLS query can take 6-20
+     seconds, so a probe has to stay under a handful of them. */
   const cases = [
-    ["bare top24",             `Property?$filter=${f}&$top=24`],
-    ["select top24",           `Property?$filter=${f}&$top=24&$select=${sel}`],
-    ["sort top24",             `Property?$filter=${f}&$top=24&$orderby=ModificationTimestamp%20desc`],
-    ["select+sort top24",      `Property?$filter=${f}&$top=24&$select=${sel}&$orderby=ModificationTimestamp%20desc`],
-    ["select+sort price",      `Property?$filter=${f}&$top=24&$select=${sel}&$orderby=ListPrice%20desc`],
-    ["select skip=5000",       `Property?$filter=${f}&$top=24&$skip=5000&$select=${sel}`],
-    ["select+sort skip=5000",  `Property?$filter=${f}&$top=24&$skip=5000&$select=${sel}&$orderby=ModificationTimestamp%20desc`],
-    ["count only",             `Property?$filter=${f}&$top=1&$count=true`],
-    ["city filter + select",   `Property?$filter=${encodeURIComponent(base + " and contains(City,'Hoover')")}&$top=24&$select=${sel}`],
-    ["agent + select",         agent ? `Property?$filter=${encodeURIComponent(base + ` and (ListAgentMlsId eq '${agent}' or CoListAgentMlsId eq '${agent}')`)}&$top=24&$select=${sel}` : null],
-    ["agent + select + sort",  agent ? `Property?$filter=${encodeURIComponent(base + ` and (ListAgentMlsId eq '${agent}' or CoListAgentMlsId eq '${agent}')`)}&$top=24&$select=${sel}&$orderby=ModificationTimestamp%20desc` : null]
+    ["select+sort (production)", `Property?$filter=${f}&$top=24&$select=${sel}&$orderby=ModificationTimestamp%20desc`],
+    ["select, no sort",          `Property?$filter=${f}&$top=24&$select=${sel}`],
+    ["no select, sort",          `Property?$filter=${f}&$top=24&$orderby=ModificationTimestamp%20desc`],
+    ["count only",               `Property?$filter=${f}&$top=1&$count=true`]
   ];
 
-  const out = { ok: true, ranAt: new Date().toISOString(), note: "ms per shape, same filter", results: {} };
+  const out = { ok: true, ranAt: new Date().toISOString(), results: {} };
   await getToken();   // pay the auth cost once, outside the measurements
   for (const [label, path] of cases) {
-    if (!path) { out.results[label] = "skipped"; continue; }
     const t0 = Date.now();
     try {
       const r = await odata(path);
       out.results[label] = { ms: Date.now() - t0, rows: (r.value || []).length,
                              count: r["@odata.count"] ?? undefined };
     } catch (err) {
-      out.results[label] = { ms: Date.now() - t0, error: err.message.slice(0, 120) };
+      out.results[label] = { ms: Date.now() - t0, error: err.message.slice(0, 110) };
     }
   }
   return res.status(200).json(out);

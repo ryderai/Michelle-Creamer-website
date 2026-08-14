@@ -53,7 +53,80 @@ function readBody(req) {
   return {};
 }
 
+/* ---------- diag: why did a send fail? ----------
+   GET /api/lead?diag=1
+
+   Sends NO email. It asks Resend which sending domains are verified, which is
+   almost always the answer: with no verified domain Resend only accepts mail
+   from onboarding@resend.dev, and only TO the address the Resend account was
+   opened with. Anything else comes back rejected, which this endpoint surfaces
+   as a 502 with "We could not send that just now."
+
+   Never prints the API key — only whether one is present. */
+async function diag(res) {
+  const key  = process.env.RESEND_API_KEY;
+  const from = process.env.LEAD_FROM_EMAIL || DEFAULT_FROM;
+  const to   = process.env.LEAD_TO_EMAIL   || DEFAULT_TO;
+
+  const out = {
+    ok: true,
+    keySet: Boolean(key),
+    keyLooksLikeResend: Boolean(key && key.startsWith("re_")),
+    from, to,
+    bcc: process.env.LEAD_BCC_EMAIL || null,
+    usingSandboxSender: /resend\.dev/i.test(from)
+  };
+
+  if (!key) {
+    out.verdict = "No RESEND_API_KEY set. Nothing can send.";
+    return res.status(200).json(out);
+  }
+
+  try {
+    const r = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${key}` }
+    });
+    out.resendStatus = r.status;
+    const body = await r.json().catch(() => ({}));
+
+    if (r.status === 401 || r.status === 403) {
+      out.verdict = "Resend rejected the key. It is wrong, revoked, or was rotated without updating Vercel.";
+      return res.status(200).json(out);
+    }
+
+    const domains = (body.data || body || []);
+    out.domains = Array.isArray(domains)
+      ? domains.map(d => ({ name: d.name, status: d.status, region: d.region }))
+      : domains;
+    const verified = (Array.isArray(domains) ? domains : []).filter(d => d.status === "verified");
+    out.verifiedDomains = verified.map(d => d.name);
+
+    const fromDomain = String(from).split("@").pop().replace(/>$/, "").trim();
+    out.fromDomainVerified = out.verifiedDomains.includes(fromDomain);
+
+    if (!verified.length) {
+      out.verdict = "No verified sending domain in Resend. That is why the send failed: " +
+        "with the sandbox sender, Resend only delivers to the email address the Resend " +
+        "account was created with. Verify a domain you control (aisyndicate.com works " +
+        "today) and set LEAD_FROM_EMAIL to an address on it.";
+    } else if (!out.fromDomainVerified) {
+      out.verdict = `LEAD_FROM_EMAIL uses "${fromDomain}", which is not verified. ` +
+        `Verified: ${out.verifiedDomains.join(", ")}. Set LEAD_FROM_EMAIL to an address on one of those.`;
+    } else {
+      out.verdict = "Key and sending domain both look correct. If sends still fail, read the " +
+        "exact Resend error in the Vercel function logs for /api/lead.";
+    }
+    return res.status(200).json(out);
+
+  } catch (err) {
+    out.verdict = "Could not reach Resend: " + err.message.slice(0, 140);
+    return res.status(200).json(out);
+  }
+}
+
 export default async function handler(req, res) {
+  if (req.query && req.query.diag) return diag(res);
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ ok: false, error: "METHOD", message: "Use POST." });
