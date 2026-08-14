@@ -85,24 +85,88 @@ document.addEventListener("DOMContentLoaded", () => {
   if (about && aboutField) aboutField.value = "I'd like to know more about " + about;
 });
 
-/* ---------- Lead forms ---------- */
+/* ============================================================
+   LEAD FORMS
+   ------------------------------------------------------------
+   These used to be `mailto:` links. That opens the VISITOR'S own
+   mail app with a draft they still have to send. On a phone with
+   no mail account set up, nothing happened at all — and the page
+   said "thank you" regardless, so a lost lead looked exactly like
+   a successful one.
+
+   Now the form posts to /api/lead, which sends the email from the
+   server and reports back. The success message only appears when
+   the lead genuinely went through. If it did not, the visitor is
+   told plainly and given Michelle's phone number, and their typed
+   answers are LEFT IN THE FORM so nothing they wrote is thrown
+   away.
+   ============================================================ */
+const LEAD_API = "/api/lead";
+
+function leadFallbackHtml(msg) {
+  return '<div class="form-error" role="alert">' +
+    "<b>" + msg + "</b><br>" +
+    'Please call or text Michelle on <a href="tel:2059998164">(205) 999-8164</a>' +
+    (MICHELLE_EMAIL ? ', or email <a href="mailto:' + MICHELLE_EMAIL + '">' + MICHELLE_EMAIL + "</a>" : "") +
+    ".</div>";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-lead-form]").forEach((form) => {
-    form.addEventListener("submit", (e) => {
+    // Bot traps: a hidden field a person never sees, and the time the page
+    // was opened. Both are checked server-side.
+    const openedAt = Date.now();
+    const pot = document.createElement("input");
+    pot.type = "text";
+    pot.name = "website";
+    pot.tabIndex = -1;
+    pot.autocomplete = "off";
+    pot.setAttribute("aria-hidden", "true");
+    pot.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;opacity:0";
+    form.appendChild(pot);
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      const btn = form.querySelector('[type="submit"], button:not([type="button"])');
+      const btnText = btn ? btn.textContent : "";
+      if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+
+      const old = form.querySelector(".form-error");
+      if (old) old.remove();
+
       const data = Object.fromEntries(new FormData(form).entries());
       data._form = form.getAttribute("data-lead-form");
       data._page = window.location.pathname;
-      if (MICHELLE_EMAIL) {
-        const subject = encodeURIComponent("[michellesellslibertypark.com] " + data._form);
-        const body = encodeURIComponent(Object.entries(data).map(([k, v]) => k + ": " + v).join("\n"));
-        window.location.href = "mailto:" + MICHELLE_EMAIL + "?subject=" + subject + "&body=" + body;
-      } else {
-        console.log("[lead — preview mode, no email configured]", data);
+      data._started = openedAt;
+
+      let ok = false, message = "";
+      try {
+        const res = await fetch(LEAD_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        const out = await res.json().catch(() => ({}));
+        ok = res.ok && out.ok === true;
+        message = out.message || "";
+      } catch (err) {
+        console.warn("[lead] could not reach the server:", err);
       }
-      const ok = form.querySelector(".form-success");
-      if (ok) ok.classList.add("show");
-      form.querySelectorAll("input, textarea, select").forEach((el) => { if (el.type !== "submit") el.value = ""; });
+
+      if (btn) { btn.disabled = false; btn.textContent = btnText; }
+
+      if (ok) {
+        const okBox = form.querySelector(".form-success");
+        if (okBox) okBox.classList.add("show");
+        form.querySelectorAll("input, textarea, select").forEach((el) => {
+          if (el.type !== "submit" && el.name !== "website") el.value = "";
+        });
+      } else {
+        // Do NOT clear the fields — the visitor should not have to retype.
+        form.insertAdjacentHTML("beforeend",
+          leadFallbackHtml(message || "Sorry — that didn’t go through."));
+      }
     });
   });
 });

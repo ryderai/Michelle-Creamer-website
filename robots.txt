@@ -1,5 +1,5 @@
 # michellesellslibertypark.com — Michelle Creamer, Realtor®, ARC Realty
-# Search and AI crawlers are welcome. See /llms.txt, /llms-full.txt and /agents.md.
+# Search and AI crawlers are welcome.
 
 User-agent: *
 Allow: /

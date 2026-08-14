@@ -265,9 +265,30 @@ export default async function handler(req, res) {
     await attachOpenHouses(listings);
 
     if (req.query.debug) {
+      /* How many listings actually MATCH, regardless of the page size we ask
+         for. If this comes back far above rawCount, the site is showing a
+         truncated slice of the MLS and PAGE_SIZE / paging needs work. Asking
+         for $top=1 keeps it cheap. */
+      let totalAvailable = null, countNote = null, nextLinkSeen = null;
+      try {
+        const f = statusFilter(["Active", "Pending"]) + agentClause;
+        const probe = await odata(`Property?$filter=${encodeURIComponent(f)}&$top=1&$count=true`);
+        totalAvailable = probe["@odata.count"] ?? null;
+        nextLinkSeen = Boolean(probe["@odata.nextLink"]);
+        if (totalAvailable == null) countNote = "server did not return @odata.count";
+      } catch (err) {
+        countNote = "$count=true rejected: " + err.message.slice(0, 120);
+      }
+
       return res.status(200).json({
         ok: true,
         scope,
+        pageSize: PAGE_SIZE,
+        maxRecords: MAX_RECORDS,
+        totalAvailable,          // what the MLS says exists
+        nextLinkSeen,            // does the server offer a next page at all?
+        countNote,
+        truncated: totalAvailable != null && totalAvailable > raw.length,
         agentIdConfigured: Boolean(agentId),
         rawCount: raw.length,
         displayedCount: listings.length,

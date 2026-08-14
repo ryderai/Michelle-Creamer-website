@@ -1105,3 +1105,20 @@ html.pl-done .hero-stats { transition-delay: .95s; }
 .idx-disclaimer p:last-child { margin-bottom: 0; }
 .idx-updated { display: block; margin-top: 4px; }
 .idx-updated[hidden] { display: none; }
+
+/* ============================================================
+   LEAD FORM FAILURE
+   Shown only when a lead genuinely did not send. The visitor's
+   answers stay in the form so they never have to retype.
+   ============================================================ */
+.form-error {
+  margin-top: 14px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(190, 60, 60, .35);
+  background: rgba(190, 60, 60, .07);
+  color: #8c2b2b;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.form-error a { color: inherit; font-weight: 600; }

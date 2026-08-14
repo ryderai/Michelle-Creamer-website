@@ -56,7 +56,15 @@ function normalizeListing(raw) {
   };
 }
 
-let _cache = null;
+/* Two different lists, cached separately.
+     agent — only Michelle's own listings (MLS_AGENT_MLS_ID in Vercel).
+             This is what the homepage's Featured Listings should show.
+     all   — every active listing in Greater Alabama MLS. This is what a
+             Property Search page has to show: a buyer searching "Hoover" must
+             find Hoover homes, not a dozen of Michelle's.
+   A grid picks its list with data-scope="all" in the HTML; without it, a grid
+   gets Michelle's own listings. */
+const _cache = new Map();
 
 /* When the MLS data in the page was pulled. Shown in the IDX disclaimer,
    because "deemed reliable" only means something if a visitor can see how
@@ -76,30 +84,32 @@ function stampFeedFreshness() {
   el.hidden = false;
 }
 
-async function fetchListings() {
-  if (_cache) return _cache;
+async function fetchListings(scope) {
+  scope = scope === "all" ? "all" : "agent";
+  if (_cache.has(scope)) return _cache.get(scope);
   try {
     let data;
     if (LISTINGS_API.mode === "live" && LISTINGS_API.endpoint) {
-      const res = await fetch(LISTINGS_API.endpoint, {
+      const url = LISTINGS_API.endpoint + (scope === "all" ? "?scope=all" : "");
+      const res = await fetch(url, {
         headers: Object.assign(
           LISTINGS_API.apiKey ? { Authorization: "Bearer " + LISTINGS_API.apiKey } : {},
           LISTINGS_API.headers
         )
       });
       data = await res.json();
-      _feedGeneratedAt = data.generatedAt || null;
-      _cache = (data.value || data.listings || data).map(normalizeListing);
+      _feedGeneratedAt = data.generatedAt || _feedGeneratedAt;
+      _cache.set(scope, (data.value || data.listings || data).map(normalizeListing));
     } else {
       const res = await fetch(LISTINGS_API.localPath);
       data = await res.json();
-      _cache = data.listings.map(normalizeListing);
+      _cache.set(scope, data.listings.map(normalizeListing));
     }
   } catch (err) {
     console.warn("[listings] could not load data:", err);
-    _cache = [];
+    _cache.set(scope, []);
   }
-  return _cache;
+  return _cache.get(scope);
 }
 
 /* ---------- formatting helpers ---------- */
@@ -366,12 +376,14 @@ function emptyState(msg) {
 }
 
 async function initListingGrids() {
-  const grids = document.querySelectorAll("[data-listings]");
+  const grids = Array.prototype.slice.call(document.querySelectorAll("[data-listings]"));
   if (!grids.length) return;
-  const all = await fetchListings();
-  stampFeedFreshness();
 
-  grids.forEach((grid) => {
+  await Promise.all(grids.map(async (grid) => {
+    // data-scope="all" = the whole MLS. No attribute = Michelle's own listings.
+    const all = await fetchListings(grid.getAttribute("data-scope"));
+    stampFeedFreshness();
+
     const filter = grid.getAttribute("data-filter") || "all";
     const limit = parseInt(grid.getAttribute("data-limit") || "0", 10);
 
@@ -392,6 +404,16 @@ async function initListingGrids() {
       if (typeSel && typeSel.value !== "all") list = list.filter((l) => l.type === typeSel.value);
       list = sortListings(list, sortSel ? sortSel.value : "");
       if (limit) list = list.slice(0, limit);
+
+      /* Some sections only make sense when they have listings — "Recently Sold"
+         is one. The MLS feed carries active and pending homes only, so that
+         grid is empty until sold data is licensed. Hide the whole section
+         rather than show a visitor an empty shelf. */
+      const hideWrap = grid.hasAttribute("data-hide-if-empty")
+        ? (grid.closest("section") || grid)          // hide the heading too, not just the grid
+        : grid.closest("[data-hide-if-empty]");
+      if (hideWrap) hideWrap.style.display = list.length ? "" : "none";
+
       grid.innerHTML = list.length ? list.map(listingCard).join("") : emptyState(grid.getAttribute("data-empty"));
       const count = page.querySelector("[data-results-count]");
       if (count) count.textContent = list.length + (list.length === 1 ? " property" : " properties");
@@ -405,7 +427,7 @@ async function initListingGrids() {
       const el = page.querySelector("[" + attr + "]");
       if (el) el.addEventListener(attr === "data-listing-search" ? "input" : "change", render);
     });
-  });
+  }));
 }
 
 document.addEventListener("DOMContentLoaded", initListingGrids);

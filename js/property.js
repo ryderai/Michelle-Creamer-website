@@ -164,7 +164,11 @@
   window.addEventListener("DOMContentLoaded", async () => {
     const params = new URLSearchParams(location.search);
     const id = params.get("id"), mls = params.get("mls");
-    const all = await fetchListings();
+    /* The whole market, not just Michelle's own listings. A visitor arrives here
+       by clicking any card in the property search, and most of those belong to
+       other brokerages — looking them up in her own list would show "listing not
+       found" for nearly every home on the site. */
+    const all = await fetchListings("all");
     const l = all.find((x) => x.id === id || x.mls === mls || x.mls.replace("PLACEHOLDER-", "") === mls);
     if (!l) {
       // No listing to show — stay on the page, hide the empty template,
