@@ -12,15 +12,42 @@
 (function () {
   const $ = (s) => document.querySelector(s);
 
-  function galleryUrls(l) {
-    // ARC/datafloat MLS photo pattern: {mls}_1.jpg ... {mls}_N.jpg
-    if (/MLSPhotos/.test(l.photo)) {
-      const base = l.photo.replace(/_1\.jpg.*/, "");
-      const urls = [];
-      for (let i = 1; i <= 12; i++) urls.push(base + "_" + i + ".jpg?mw=1600");
-      return urls;
+  const escAttr = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  /* ---------- gallery ----------
+     GALMLS/Paragon will not send pictures with a listing record
+     (`$expand=Media` answers 501 Not Implemented), so the full photo set is
+     fetched from /api/media in its own request. Nothing is guessed from the
+     MLS number any more: the old {mls}_1.jpg pattern belonged to her ARC
+     template and produces dead image links on this feed. */
+  async function paintGallery(l, chips) {
+    const wrap = $("#pd-gallery");
+    if (!wrap) return;
+
+    wrap.innerHTML =
+      '<div class="pd-hero-img loading"><div class="lc-chips">' + chips.join("") + "</div>" +
+      '<span class="pd-photo-note">Loading photos&hellip;</span></div>';
+
+    let urls = Array.isArray(l.photos) && l.photos.length ? l.photos : null;
+    if (!urls && window.fetchListingPhotos) urls = await window.fetchListingPhotos(l.id);
+    if (!urls || !urls.length) urls = l.photo ? [l.photo] : [];
+
+    if (!urls.length) {
+      wrap.innerHTML =
+        '<div class="pd-hero-img noimg"><div class="lc-chips">' + chips.join("") + "</div>" +
+        '<span class="pd-photo-note">No photos are published for this listing in the MLS.</span></div>';
+      return;
     }
-    return [l.photo];
+
+    wrap.innerHTML =
+      '<div class="pd-hero-img"><div class="lc-chips">' + chips.join("") + "</div>" +
+        '<img id="pd-main" src="' + escAttr(urls[0]) + '" alt="' + escAttr(l.address) +
+        '" onerror="this.closest(\'.pd-hero-img\').classList.add(\'noimg\')"></div>' +
+      '<div class="pd-thumbs">' + urls.slice(1).map((u) =>
+        '<img src="' + escAttr(u) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()" ' +
+        'onclick="document.getElementById(\'pd-main\').src=this.src">'
+      ).join("") + "</div>";
   }
 
   function factRow(label, value) {
@@ -34,7 +61,20 @@
     return '<div class="pd-section"><h3>' + title + '</h3><div class="pd-rows">' + inner + "</div></div>";
   }
 
+  /* Every listing shares property.html, so the static canonical tag in the head
+     points at the bare template. Left alone, that tells search engines all
+     listings are the same page and only one would ever get indexed. Point the
+     canonical (and the markdown twin link) at this specific listing instead. */
+  function fixCanonical(l) {
+    const abs = location.origin + location.pathname + "?id=" + encodeURIComponent(l.id);
+    const c = document.querySelector('link[rel="canonical"]');
+    if (c) c.href = abs;
+    const md = document.querySelector('link[type="text/markdown"]');
+    if (md) md.remove();   // no markdown twin exists for an individual listing
+  }
+
   function render(l, all) {
+    fixCanonical(l);
     const priceStr = fmtPrice(l.price) + (l.type === "rental" ? "/mo" : "");
     document.title = l.address.toUpperCase() + ", " + l.city.toUpperCase() + ", " + l.state + " " + l.zip + " | Michelle Creamer, ARC Realty";
 
@@ -45,13 +85,8 @@
     if (l.luxury) chips.push('<span class="chip">Luxury</span>');
     if (l.type === "rental") chips.push('<span class="chip">For Lease</span>');
 
-    // ---- gallery
-    const urls = galleryUrls(l);
-    $("#pd-gallery").innerHTML =
-      '<div class="pd-hero-img"><div class="lc-chips">' + chips.join("") + '</div><img id="pd-main" src="' + urls[0] + '" alt="' + l.address + '" onerror="this.closest(\'.pd-hero-img\').classList.add(\'noimg\')"></div>' +
-      '<div class="pd-thumbs">' + urls.slice(1).map((u) =>
-        '<img src="' + u + '" alt="" loading="lazy" onerror="this.remove()" onclick="document.getElementById(\'pd-main\').src=this.src">'
-      ).join("") + "</div>";
+    // ---- gallery (fills itself in from /api/media; see paintGallery above)
+    paintGallery(l, chips);
 
     // ---- header
     $("#pd-head").innerHTML =
@@ -105,6 +140,7 @@
     const simAlt = sim.length ? sim : all.filter((x) => x.id !== l.id && x.status !== "sold").slice(0, 3);
     $("#pd-similar").innerHTML = simAlt.map(listingCard).join("");
     if (window.observeReveals) window.observeReveals($("#pd-similar"));
+    if (window.watchPhotoSlots) window.watchPhotoSlots($("#pd-similar"));
 
     // map link
     const q = encodeURIComponent(l.address + ", " + l.city + ", " + l.state + " " + l.zip);
@@ -146,6 +182,7 @@
         "</div>";
       $("#pd-similar").innerHTML = all.filter((x) => x.status !== "sold").slice(0, 3).map(listingCard).join("");
       if (window.observeReveals) window.observeReveals($("#pd-similar"));
+      if (window.watchPhotoSlots) window.watchPhotoSlots($("#pd-similar"));
       return;
     }
     render(l, all);

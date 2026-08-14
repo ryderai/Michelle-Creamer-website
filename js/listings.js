@@ -39,8 +39,13 @@ function normalizeListing(raw) {
     luxury: !!raw.luxury,
     newConstruction: !!raw.newConstruction,
     openHouse: raw.openHouse || null,
-    photo: raw.photo,
+    photo: raw.photo || null,
     photos: raw.photos || [],
+    // The MLS's own picture count. GALMLS refuses to send photos with the
+    // listing record ($expand=Media returns 501), so pictures are fetched
+    // separately from /api/media. This number tells us whether asking is
+    // even worth it for a given listing.
+    photosCount: raw.photosCount == null ? null : Number(raw.photosCount),
     blurb: raw.blurb || "",
     description: raw.description || "",   // full MLS remarks (live feed: PublicRemarks)
     details: raw.details || null,
@@ -52,6 +57,24 @@ function normalizeListing(raw) {
 }
 
 let _cache = null;
+
+/* When the MLS data in the page was pulled. Shown in the IDX disclaimer,
+   because "deemed reliable" only means something if a visitor can see how
+   fresh the data is. */
+let _feedGeneratedAt = null;
+
+function stampFeedFreshness() {
+  const el = document.querySelector("[data-idx-updated]");
+  if (!el || !_feedGeneratedAt) return;
+  const d = new Date(_feedGeneratedAt);
+  if (isNaN(d)) return;
+  el.textContent = "Listing data last updated " +
+    d.toLocaleString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", timeZone: "America/Chicago"
+    }) + " CT.";
+  el.hidden = false;
+}
 
 async function fetchListings() {
   if (_cache) return _cache;
@@ -65,6 +88,7 @@ async function fetchListings() {
         )
       });
       data = await res.json();
+      _feedGeneratedAt = data.generatedAt || null;
       _cache = (data.value || data.listings || data).map(normalizeListing);
     } else {
       const res = await fetch(LISTINGS_API.localPath);
@@ -79,6 +103,12 @@ async function fetchListings() {
 }
 
 /* ---------- formatting helpers ---------- */
+/* MLS text (addresses, agent names) goes straight into HTML attributes here.
+   A single stray quote in a feed record would otherwise break the markup, so
+   escape it. */
+const esc = (s) => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const fmtPrice = (n) => n == null ? "" : "$" + n.toLocaleString("en-US");
 const fmtSqft = (n) => n == null ? "" : n.toLocaleString("en-US");
 const STATUS_LABEL = {
@@ -94,6 +124,129 @@ function fmtOpenHouse(oh) {
   const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   return day + " · " + oh.time;
 }
+
+/* ============================================================
+   LISTING PHOTOS — second request, on purpose
+   ------------------------------------------------------------
+   GALMLS/Paragon will not send pictures with a listing record
+   (`$expand=Media` answers 501 Not Implemented). So /api/listings
+   returns every fact except the photos, and this block fetches
+   photos from /api/media only for the cards a visitor can
+   actually see, in batches, as they scroll.
+
+   Why not just pull all ~200 up front? It would mean hundreds of
+   extra MLS requests for pictures nobody looks at, and the page
+   would sit blank while they finished.
+   ============================================================ */
+const MEDIA_API      = "/api/media";
+const MEDIA_BATCH    = 12;    // keys per request — small enough that GALMLS never chokes
+const MEDIA_DEBOUNCE = 80;    // ms to let a scroll burst gather before firing
+
+const _photoCache = new Map();   // ListingKey -> array of photo urls (possibly empty)
+const _photoQueue = new Set();   // keys waiting to be requested
+const _photoAsked = new Set();   // keys already requested — never ask twice
+let   _photoTimer = null;
+
+/* Put the photo (or an honest "no photo" state) into every card for this key. */
+function paintPhoto(key, urls) {
+  document.querySelectorAll('[data-photo-key="' + CSS.escape(key) + '"]').forEach((slot) => {
+    slot.classList.remove("loading");
+    if (!urls || !urls.length) {
+      slot.classList.add("noimg");
+      slot.setAttribute("data-photo-state", "none");
+      return;
+    }
+    /* The image is put into the page FIRST and revealed by CSS once it loads.
+       It is deliberately not loading="lazy": a lazy image that is not yet in
+       the document never starts loading in Chrome, so the photo would never
+       appear. We already hold the request back with IntersectionObserver, so
+       lazy loading here would add nothing anyway. */
+    const img = document.createElement("img");
+    img.alt = slot.getAttribute("data-photo-alt") || "";
+    img.decoding = "async";
+    img.addEventListener("load",  () => slot.setAttribute("data-photo-state", "ready"));
+    img.addEventListener("error", () => {
+      img.remove();
+      slot.classList.add("noimg");
+      slot.setAttribute("data-photo-state", "none");
+    });
+    slot.appendChild(img);
+    img.src = urls[0];
+  });
+}
+
+async function flushPhotoQueue() {
+  _photoTimer = null;
+  if (!_photoQueue.size) return;
+  const keys = Array.from(_photoQueue).slice(0, MEDIA_BATCH);
+  keys.forEach((k) => { _photoQueue.delete(k); _photoAsked.add(k); });
+
+  try {
+    const res = await fetch(MEDIA_API + "?keys=" + keys.map(encodeURIComponent).join(","));
+    if (!res.ok) throw new Error("media endpoint returned " + res.status);
+    const data = await res.json();
+    const media = data.media || {};
+    keys.forEach((k) => {
+      const urls = media[k] || [];
+      _photoCache.set(k, urls);   // [] here is a real answer: the MLS has no photo
+      paintPhoto(k, urls);
+    });
+  } catch (err) {
+    // A photo is not worth breaking a page over: show the neutral state and move
+    // on. But do NOT cache the failure — an MLS hiccup must not turn into
+    // "Photo not in MLS" for the rest of the visit. Let the next render retry.
+    console.warn("[photos] could not load:", err);
+    keys.forEach((k) => { _photoAsked.delete(k); paintPhoto(k, []); });
+  }
+  if (_photoQueue.size) schedulePhotoFlush();
+}
+
+function schedulePhotoFlush() {
+  if (_photoTimer) return;
+  _photoTimer = setTimeout(flushPhotoQueue, MEDIA_DEBOUNCE);
+}
+
+function queuePhoto(key) {
+  if (_photoCache.has(key)) { paintPhoto(key, _photoCache.get(key)); return; }
+  if (_photoAsked.has(key)) return;
+  _photoQueue.add(key);
+  schedulePhotoFlush();
+}
+
+/* Only ask for photos once a card is near the screen. */
+let _photoObserver = null;
+function watchPhotoSlots(root) {
+  const slots = (root || document).querySelectorAll("[data-photo-key]:not([data-photo-watched])");
+  if (!slots.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    slots.forEach((s) => { s.setAttribute("data-photo-watched", "1"); queuePhoto(s.getAttribute("data-photo-key")); });
+    return;
+  }
+  if (!_photoObserver) {
+    _photoObserver = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        _photoObserver.unobserve(en.target);
+        queuePhoto(en.target.getAttribute("data-photo-key"));
+      });
+    }, { rootMargin: "600px 0px" });   // start fetching before the card scrolls in
+  }
+  slots.forEach((s) => { s.setAttribute("data-photo-watched", "1"); _photoObserver.observe(s); });
+}
+window.watchPhotoSlots = watchPhotoSlots;
+
+/* Full gallery for one listing (used by the property detail page). */
+window.fetchListingPhotos = async function (key) {
+  try {
+    const res  = await fetch(MEDIA_API + "?keys=" + encodeURIComponent(key) + "&full=1");
+    const data = await res.json();
+    return (data.media && data.media[key]) || [];
+  } catch (err) {
+    console.warn("[photos] gallery unavailable:", err);
+    return [];
+  }
+};
 
 /* ---------- card renderer ---------- */
 function listingCard(l) {
@@ -112,12 +265,34 @@ function listingCard(l) {
 
   const url = "property.html?id=" + encodeURIComponent(l.id);
   const saved = window.mcSaved && window.mcSaved.has(l.id);
+  const alt = esc(l.address + ", " + l.city + " " + l.state);
+
+  /* The picture slot has three states:
+       ready   — real MLS photo loaded
+       loading — waiting on /api/media (GALMLS sends photos separately)
+       none    — the MLS has no photo for this listing
+     It never shows a stock house, because that would show the wrong building. */
+  let media;
+  if (l.photo) {
+    media = '<img src="' + esc(l.photo) + '" alt="' + alt + '" loading="lazy" decoding="async" onerror="this.remove()">';
+  } else if (l.photosCount === 0) {
+    media = "";   // MLS says there is nothing to fetch
+  } else {
+    media = "";   // filled in by the photo loader above
+  }
+  const slotClass = "lc-media" +
+    (l.photo ? "" : (l.photosCount === 0 ? " noimg" : " loading"));
+  const slotAttrs = l.photo || l.photosCount === 0
+    ? ' data-photo-state="' + (l.photo ? "ready" : "none") + '"'
+    : ' data-photo-key="' + esc(l.id) + '" data-photo-alt="' + alt + '" data-photo-state="loading"';
+
   return (
     '<article class="listing-card reveal">' +
-      '<a class="lc-media" href="' + url + '">' +
+      '<a class="' + slotClass + '" href="' + url + '"' + slotAttrs + ">" +
         '<button class="lc-save' + (saved ? " on" : "") + '" data-id="' + l.id + '" aria-label="Save this home" title="Save this home">&#10084;</button>' +
         '<div class="lc-chips">' + chips.join("") + "</div>" +
-        '<img src="' + l.photo + '" alt="' + l.address + ", " + l.city + " " + l.state + '" loading="lazy" onerror="this.remove()">' +
+        '<span class="lc-photo-note" aria-hidden="true"></span>' +
+        media +
       "</a>" +
       '<div class="lc-body">' +
         '<div class="lc-price">' + fmtPrice(l.price) + (l.type === "rental" ? '<span style="font-size:15px;color:var(--text-soft)">/mo</span>' : "") + "</div>" +
@@ -194,6 +369,7 @@ async function initListingGrids() {
   const grids = document.querySelectorAll("[data-listings]");
   if (!grids.length) return;
   const all = await fetchListings();
+  stampFeedFreshness();
 
   grids.forEach((grid) => {
     const filter = grid.getAttribute("data-filter") || "all";
@@ -220,6 +396,7 @@ async function initListingGrids() {
       const count = page.querySelector("[data-results-count]");
       if (count) count.textContent = list.length + (list.length === 1 ? " property" : " properties");
       if (window.observeReveals) window.observeReveals(grid);
+      watchPhotoSlots(grid);   // real MLS photos arrive from /api/media as cards scroll in
     };
 
     render();

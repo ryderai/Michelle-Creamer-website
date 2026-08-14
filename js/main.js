@@ -3,9 +3,12 @@
    Nav (glass), dropdowns, reveals, lead forms, hero search
    ============================================================ */
 
-/* Lead forms are in PREVIEW MODE until Michelle's email is
-   confirmed with CJ. Leave blank to log to console only. */
-const MICHELLE_EMAIL = "";
+/* Where website leads go. This is Michelle's brokerage address, taken from
+   the Birmingham Association of REALTORS IDX ticket #113466 email thread
+   (she is a named recipient on it) and from CJ's Jul 24 2026 forward of an
+   email she sent herself. Set this back to "" to send leads to the browser
+   console instead of to her. */
+const MICHELLE_EMAIL = "mcreamer@arcrealtyco.com";
 
 /* ---------- Navigation ---------- */
 (function nav() {

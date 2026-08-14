@@ -172,8 +172,14 @@ function normalize(raw) {
     newConstruction: raw.NewConstructionYN === true,
     openHouse:       null,                        // filled in by attachOpenHouses()
 
-    photo:       photos[0] || "img/hero-vestlake-home.jpg",
+    /* GALMLS rejects $expand=Media (501), so no picture arrives with the
+       listing record. Deliberately null — NOT a stock house photo, which
+       would show a visitor the wrong building. The browser fills these in
+       from /api/media. photosCount is the MLS's own count, so the front end
+       knows whether a photo request is even worth making. */
+    photo:       photos[0] || null,
     photos,
+    photosCount: raw.PhotosCount ?? raw.PicturesCount ?? null,
     blurb:       "",
     description: raw.PublicRemarks || "",
     details:     null,
@@ -266,7 +272,13 @@ export default async function handler(req, res) {
         rawCount: raw.length,
         displayedCount: listings.length,
         byStatus: listings.reduce((a, l) => ((a[l.status] = (a[l.status] || 0) + 1), a), {}),
+        // withPhotos stays 0 by design: GALMLS blocks $expand=Media, so pictures
+        // never ride along with the listing. mlsSaysHasPhotos is the MLS's own
+        // count and is what proves photos EXIST to be fetched from /api/media.
         withPhotos: listings.filter(l => l.photos.length).length,
+        mlsSaysHasPhotos: listings.filter(l => (l.photosCount || 0) > 0).length,
+        photoKeySample: listings.filter(l => (l.photosCount || 0) > 0).slice(0, 5)
+                                .map(l => ({ key: l.id, mls: l.mls, photosCount: l.photosCount })),
         usedVariant,
         attempts,
         sampleAgentIds: [...new Set(raw.map(r => r.ListAgentMlsId).filter(Boolean))].slice(0, 10),
