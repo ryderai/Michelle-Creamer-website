@@ -222,6 +222,26 @@ const SORTS = {
   "sqft-desc":  "LivingArea desc"
 };
 
+/* Only the fields the site actually renders. Without $select the MLS returns
+   every column it has (well over a hundred) for every row, which it has to
+   read, serialise and send. Asking for ~30 named fields is the single cheapest
+   speed win available here. `lean` drops PublicRemarks, which is the largest
+   field by far and is never shown on a card. */
+const SELECT_CORE = [
+  "ListingKey", "ListingId", "StandardStatus",
+  "UnparsedAddress", "StreetNumber", "StreetDirPrefix", "StreetName", "StreetSuffix",
+  "City", "StateOrProvince", "PostalCode",
+  "ListPrice", "ClosePrice",
+  "BedroomsTotal", "BathroomsTotalInteger", "BathroomsFull", "BathroomsHalf",
+  "LivingArea", "BuildingAreaTotal",
+  "PropertyType", "PropertySubType", "SubdivisionName", "NewConstructionYN",
+  "PhotosCount",
+  "ListOfficeName", "ListAgentFullName", "ListOfficePhone", "ListAgentMlsId",
+  "CoListAgentMlsId", "ModificationTimestamp"
+];
+const selectFor = (lean) =>
+  (lean ? SELECT_CORE : SELECT_CORE.concat("PublicRemarks")).join(",");
+
 function buildClauses(p, agentId) {
   const required = [];
   const optional = [];      // dropped one at a time if the MLS rejects the query
@@ -255,25 +275,29 @@ function buildClauses(p, agentId) {
    Rather than fail the whole search, try the full query first and then drop
    the optional clauses one at a time. The caller is told which ones survived,
    so the page can say so instead of silently lying about the results. */
-function buildAttempts({ required, optional }, { top, skip, orderby }) {
+function buildAttempts({ required, optional }, { top, skip, orderby, select }) {
   const attempts = [];
   for (let drop = 0; drop <= optional.length; drop++) {
     const kept = optional.slice(0, optional.length - drop);
     const filter = [...required, ...kept].join(" and ");
-    /* Deliberately NO $count=true here. Counting 12,665 matching rows is the
-       single slowest thing this endpoint can ask for, and the number is only
-       needed for the pager. It is fetched separately and cached — see
-       countFor(). */
-    let path = `Property?$filter=${encodeURIComponent(filter)}&$top=${top}`;
-    if (skip) path += `&$skip=${skip}`;
-    if (orderby) path += `&$orderby=${encodeURIComponent(orderby)}`;
-    attempts.push({ path, filter, dropped: drop, keptOptional: kept.length });
-    if (orderby) {
-      // Some servers reject $orderby on certain fields; keep the same filter
-      // but let go of the sort before giving up any of the search terms.
-      attempts.push({ path: path.replace(`&$orderby=${encodeURIComponent(orderby)}`, ""),
-                      filter, dropped: drop, keptOptional: kept.length, noSort: true });
-    }
+
+    /* Deliberately NO $count=true here. Counting matching rows across 12,665
+       listings is expensive and the number is only needed for the pager, so it
+       is fetched separately and cached — see countFor(). */
+    const base = `Property?$filter=${encodeURIComponent(filter)}&$top=${top}` +
+                 (skip ? `&$skip=${skip}` : "");
+    const sortPart   = orderby ? `&$orderby=${encodeURIComponent(orderby)}` : "";
+    const selectPart = select ? `&$select=${encodeURIComponent(select)}` : "";
+
+    /* Try the cheapest shape first: named fields only. If the MLS rejects a
+       field name the whole query 500s, so a no-$select fallback follows. Then
+       the same again without the sort, since ordering 12,665 rows is the other
+       expensive thing GALMLS does. Only after all that do we start giving up
+       the visitor's actual search terms. */
+    attempts.push({ path: base + selectPart + sortPart, filter, dropped: drop, shape: "select+sort" });
+    attempts.push({ path: base + sortPart,              filter, dropped: drop, shape: "sort" });
+    attempts.push({ path: base + selectPart,            filter, dropped: drop, shape: "select" });
+    attempts.push({ path: base,                         filter, dropped: drop, shape: "bare" });
   }
   return attempts;
 }
@@ -359,6 +383,46 @@ async function countFor(filter) {
   }
 }
 
+/* ---------- probe=speed: WHICH part of a query is slow ----------
+   GALMLS response times for the same query have been measured at 6s, 12s, 21s
+   and over 45s. This times each factor separately so the cause is measured
+   rather than guessed. Run it, then tune the production query. */
+async function probeSpeed(res) {
+  const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
+  const f = encodeURIComponent(base);
+  const sel = encodeURIComponent(selectFor(true));
+  const agent = process.env.MLS_AGENT_MLS_ID;
+
+  const cases = [
+    ["bare top24",             `Property?$filter=${f}&$top=24`],
+    ["select top24",           `Property?$filter=${f}&$top=24&$select=${sel}`],
+    ["sort top24",             `Property?$filter=${f}&$top=24&$orderby=ModificationTimestamp%20desc`],
+    ["select+sort top24",      `Property?$filter=${f}&$top=24&$select=${sel}&$orderby=ModificationTimestamp%20desc`],
+    ["select+sort price",      `Property?$filter=${f}&$top=24&$select=${sel}&$orderby=ListPrice%20desc`],
+    ["select skip=5000",       `Property?$filter=${f}&$top=24&$skip=5000&$select=${sel}`],
+    ["select+sort skip=5000",  `Property?$filter=${f}&$top=24&$skip=5000&$select=${sel}&$orderby=ModificationTimestamp%20desc`],
+    ["count only",             `Property?$filter=${f}&$top=1&$count=true`],
+    ["city filter + select",   `Property?$filter=${encodeURIComponent(base + " and contains(City,'Hoover')")}&$top=24&$select=${sel}`],
+    ["agent + select",         agent ? `Property?$filter=${encodeURIComponent(base + ` and (ListAgentMlsId eq '${agent}' or CoListAgentMlsId eq '${agent}')`)}&$top=24&$select=${sel}` : null],
+    ["agent + select + sort",  agent ? `Property?$filter=${encodeURIComponent(base + ` and (ListAgentMlsId eq '${agent}' or CoListAgentMlsId eq '${agent}')`)}&$top=24&$select=${sel}&$orderby=ModificationTimestamp%20desc` : null]
+  ];
+
+  const out = { ok: true, ranAt: new Date().toISOString(), note: "ms per shape, same filter", results: {} };
+  await getToken();   // pay the auth cost once, outside the measurements
+  for (const [label, path] of cases) {
+    if (!path) { out.results[label] = "skipped"; continue; }
+    const t0 = Date.now();
+    try {
+      const r = await odata(path);
+      out.results[label] = { ms: Date.now() - t0, rows: (r.value || []).length,
+                             count: r["@odata.count"] ?? undefined };
+    } catch (err) {
+      out.results[label] = { ms: Date.now() - t0, error: err.message.slice(0, 120) };
+    }
+  }
+  return res.status(200).json(out);
+}
+
 /* ---------- probe: what does this MLS actually accept? ---------- */
 async function probe(res) {
   const out = { ok: true, ranAt: new Date().toISOString(), checks: {} };
@@ -427,6 +491,7 @@ export default async function handler(req, res) {
   const agentId = process.env.MLS_AGENT_MLS_ID;
 
   try {
+    if (p.probe === "speed") return await probeSpeed(res);
     if (p.probe) return await probe(res);
 
     /* Michelle has a dozen listings; a market search has 12,620. Only the
@@ -439,7 +504,7 @@ export default async function handler(req, res) {
     const skip = isSearch ? (page - 1) * pageSize : 0;
     const orderby = SORTS[p.sort] || SORTS.newest;
 
-    let rows = [], total = null, usedAttempt = -1, droppedFilters = 0, countCached = null;
+    let rows = [], total = null, usedAttempt = -1, droppedFilters = 0, countCached = null, usedShape = null;
     const attempts = [];
     const t = {};
     const mark = (k, from) => { t[k] = Date.now() - from; };
@@ -451,7 +516,7 @@ export default async function handler(req, res) {
       mark("openHouseQuery", t0);
     } else {
       const clauses = buildClauses({ ...p, scope }, agentId);
-      const plan = buildAttempts(clauses, { top: pageSize, skip, orderby });
+      const plan = buildAttempts(clauses, { top: pageSize, skip, orderby, select: selectFor(isSearch) });
 
       const t0 = Date.now();
       for (let i = 0; i < plan.length; i++) {
@@ -467,6 +532,7 @@ export default async function handler(req, res) {
           total = c.total;
           countCached = c.cached;
           usedAttempt = i;
+          usedShape = plan[i].shape;
           droppedFilters = plan[i].dropped;
           break;
         } catch (err) {
@@ -500,7 +566,7 @@ export default async function handler(req, res) {
         totalAvailable: total,
         hasMore,
         droppedFilters,
-        usedAttempt,
+        usedAttempt, usedShape,
         attempts,
         countKnown, countCached,
         timing: t,

@@ -4,5 +4,10 @@
       "path": "/api/listings?scope=agent",
       "schedule": "0 */6 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 60
+    }
+  }
 }
