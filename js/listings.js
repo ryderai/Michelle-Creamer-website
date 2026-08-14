@@ -375,59 +375,201 @@ function emptyState(msg) {
   );
 }
 
+/* ============================================================
+   GRID INITIALISATION — two very different jobs
+   ------------------------------------------------------------
+   A grid WITHOUT data-scope shows Michelle's own listings. There
+   are about a dozen, so they are fetched once and filtered in the
+   browser. Fast, and the filters feel instant.
+
+   A grid WITH data-scope="all" is a search of the whole MLS —
+   12,620 listings. Those cannot be held in the browser, so the
+   search terms, the sort and the page number are sent to the MLS
+   and one page comes back at a time. Every listing is reachable.
+   ============================================================ */
+
+/* data-filter on a market grid becomes MLS query parameters. */
+const SERVER_FILTER_PARAMS = {
+  "luxury":           { luxury: "1" },
+  "commercial":       { type: "commercial" },
+  "lots":             { type: "lot" },
+  "new-construction": { newConstruction: "1" },
+  "open-houses":      { openHouse: "1" },
+  "all":              {}
+};
+
+function pagerHtml(page, pageSize, total, returned) {
+  const from = total ? (page - 1) * pageSize + 1 : 0;
+  const to   = (page - 1) * pageSize + returned;
+  const last = Math.max(Math.ceil(total / pageSize), 1);
+  return (
+    '<div class="lc-pager">' +
+      '<button class="btn ghost sm" data-page-prev' + (page <= 1 ? " disabled" : "") + ">&larr; Previous</button>" +
+      '<span class="lc-pager-count">' +
+        (total ? "Showing <b>" + from.toLocaleString("en-US") + "&ndash;" + to.toLocaleString("en-US") +
+                 "</b> of <b>" + total.toLocaleString("en-US") + "</b>" +
+                 '<span class="lc-pager-page">Page ' + page + " of " + last.toLocaleString("en-US") + "</span>"
+               : "No matching properties") +
+      "</span>" +
+      '<button class="btn ghost sm" data-page-next' + (to >= total ? " disabled" : "") + ">Next &rarr;</button>" +
+    "</div>"
+  );
+}
+
+/* ---------- a grid backed by the whole MLS ---------- */
+function initServerGrid(grid) {
+  const page   = grid.closest("[data-listing-page]") || document;
+  const filter = grid.getAttribute("data-filter") || "all";
+  const limit  = parseInt(grid.getAttribute("data-limit") || "0", 10);
+  const pageSize = limit || 24;
+
+  const searchBox = page.querySelector("[data-listing-search]");
+  const sortSel   = page.querySelector("[data-listing-sort]");
+  const typeSel   = page.querySelector("[data-listing-type]");
+  const countEl   = page.querySelector("[data-results-count]");
+
+  let pageNo = 1, inFlight = 0;
+
+  const pager = document.createElement("div");
+  pager.className = "lc-pager-wrap";
+  if (!limit) grid.insertAdjacentElement("afterend", pager);
+
+  const buildUrl = () => {
+    const qs = new URLSearchParams({ scope: "all", page: String(pageNo), pageSize: String(pageSize) });
+    Object.entries(SERVER_FILTER_PARAMS[filter] || {}).forEach(([k, v]) => qs.set(k, v));
+    if (searchBox && searchBox.value.trim()) qs.set("q", searchBox.value.trim());
+    if (typeSel && typeSel.value && typeSel.value !== "all") qs.set("type", typeSel.value);
+    if (sortSel && sortSel.value) qs.set("sort", sortSel.value);
+    return LISTINGS_API.endpoint + "?" + qs.toString();
+  };
+
+  const render = async () => {
+    const ticket = ++inFlight;               // ignore answers from stale requests
+    grid.setAttribute("aria-busy", "true");
+    if (countEl) countEl.textContent = "Searching…";
+
+    let data = { listings: [], total: 0 };
+    try {
+      const res = await fetch(buildUrl());
+      data = await res.json();
+      if (data.generatedAt) { _feedGeneratedAt = data.generatedAt; stampFeedFreshness(); }
+    } catch (err) {
+      console.warn("[listings] search failed:", err);
+    }
+    if (ticket !== inFlight) return;         // a newer search already answered
+
+    const list = (data.listings || []).map(normalizeListing);
+    grid.removeAttribute("aria-busy");
+    grid.innerHTML = list.length
+      ? list.map(listingCard).join("")
+      : emptyState(grid.getAttribute("data-empty"));
+
+    if (countEl) {
+      countEl.textContent = (data.total || 0).toLocaleString("en-US") +
+        ((data.total === 1) ? " property" : " properties");
+    }
+
+    if (!limit) {
+      pager.innerHTML = list.length || pageNo > 1
+        ? pagerHtml(data.page || pageNo, data.pageSize || pageSize, data.total || 0, list.length)
+        : "";
+      const prev = pager.querySelector("[data-page-prev]");
+      const next = pager.querySelector("[data-page-next]");
+      if (prev) prev.addEventListener("click", () => { if (pageNo > 1) { pageNo--; render(); scrollToGrid(); } });
+      if (next) next.addEventListener("click", () => { if (data.hasMore) { pageNo++; render(); scrollToGrid(); } });
+    }
+
+    /* If the MLS refused part of the search we say so, rather than quietly
+       showing results that do not match what was typed. */
+    const warn = page.querySelector("[data-filter-warning]");
+    if (warn) {
+      warn.textContent = data.droppedFilters
+        ? "Some of your filters could not be applied by the MLS, so these results are broader than you asked for."
+        : "";
+      warn.hidden = !data.droppedFilters;
+    }
+
+    if (window.observeReveals) window.observeReveals(grid);
+    watchPhotoSlots(grid);
+  };
+
+  const scrollToGrid = () => {
+    const top = grid.getBoundingClientRect().top + window.scrollY - 120;
+    window.scrollTo({ top, behavior: "smooth" });
+  };
+
+  const reset = () => { pageNo = 1; render(); };
+
+  let typingTimer = null;
+  if (searchBox) searchBox.addEventListener("input", () => {
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(reset, 350);   // wait for them to stop typing
+  });
+  if (sortSel) sortSel.addEventListener("change", reset);
+  if (typeSel) typeSel.addEventListener("change", reset);
+
+  render();
+}
+
+/* ---------- a grid backed by Michelle's own listings ---------- */
+async function initAgentGrid(grid) {
+  const all = await fetchListings("agent");
+  stampFeedFreshness();
+
+  const filter = grid.getAttribute("data-filter") || "all";
+  const limit  = parseInt(grid.getAttribute("data-limit") || "0", 10);
+  const page   = grid.closest("[data-listing-page]") || document;
+
+  const render = () => {
+    let list = applyFilter(all, filter);
+
+    // Saved Homes view: property-search.html?saved=1
+    if (new URLSearchParams(window.location.search).get("saved") === "1" && filter === "all") {
+      list = all.filter((l) => window.mcSaved && window.mcSaved.has(l.id));
+      grid.setAttribute("data-empty", "No saved homes yet. Tap the heart on any listing to keep it here.");
+      const head = document.querySelector(".page-hero h1");
+      if (head) head.textContent = "Your Saved Homes";
+    }
+
+    const searchBox = page.querySelector("[data-listing-search]");
+    const sortSel   = page.querySelector("[data-listing-sort]");
+    const typeSel   = page.querySelector("[data-listing-type]");
+    if (searchBox && searchBox.value) list = searchListings(list, searchBox.value);
+    if (typeSel && typeSel.value !== "all") list = list.filter((l) => l.type === typeSel.value);
+    list = sortListings(list, sortSel ? sortSel.value : "");
+    if (limit) list = list.slice(0, limit);
+
+    /* Some sections only make sense when they have listings — "Recently Sold"
+       is one. The MLS feed carries active and pending homes only, so that
+       grid is empty until sold data is licensed. Hide the whole section
+       rather than show a visitor an empty shelf. */
+    const hideWrap = grid.hasAttribute("data-hide-if-empty")
+      ? (grid.closest("section") || grid)
+      : grid.closest("[data-hide-if-empty]");
+    if (hideWrap) hideWrap.style.display = list.length ? "" : "none";
+
+    grid.innerHTML = list.length ? list.map(listingCard).join("") : emptyState(grid.getAttribute("data-empty"));
+    const count = page.querySelector("[data-results-count]");
+    if (count) count.textContent = list.length + (list.length === 1 ? " property" : " properties");
+    if (window.observeReveals) window.observeReveals(grid);
+    watchPhotoSlots(grid);
+  };
+
+  render();
+  ["data-listing-search", "data-listing-sort", "data-listing-type"].forEach((attr) => {
+    const el = page.querySelector("[" + attr + "]");
+    if (el) el.addEventListener(attr === "data-listing-search" ? "input" : "change", render);
+  });
+}
+
 async function initListingGrids() {
   const grids = Array.prototype.slice.call(document.querySelectorAll("[data-listings]"));
   if (!grids.length) return;
-
-  await Promise.all(grids.map(async (grid) => {
-    // data-scope="all" = the whole MLS. No attribute = Michelle's own listings.
-    const all = await fetchListings(grid.getAttribute("data-scope"));
-    stampFeedFreshness();
-
-    const filter = grid.getAttribute("data-filter") || "all";
-    const limit = parseInt(grid.getAttribute("data-limit") || "0", 10);
-
-    const render = () => {
-      let list = applyFilter(all, filter);
-      // Saved Homes view: property-search.html?saved=1
-      if (new URLSearchParams(window.location.search).get("saved") === "1" && filter === "all") {
-        list = all.filter((l) => window.mcSaved && window.mcSaved.has(l.id));
-        grid.setAttribute("data-empty", "No saved homes yet. Tap the heart on any listing to keep it here.");
-        const head = document.querySelector(".page-hero h1");
-        if (head) head.textContent = "Your Saved Homes";
-      }
-      const page = grid.closest("[data-listing-page]") || document;
-      const searchBox = page.querySelector("[data-listing-search]");
-      const sortSel = page.querySelector("[data-listing-sort]");
-      const typeSel = page.querySelector("[data-listing-type]");
-      if (searchBox && searchBox.value) list = searchListings(list, searchBox.value);
-      if (typeSel && typeSel.value !== "all") list = list.filter((l) => l.type === typeSel.value);
-      list = sortListings(list, sortSel ? sortSel.value : "");
-      if (limit) list = list.slice(0, limit);
-
-      /* Some sections only make sense when they have listings — "Recently Sold"
-         is one. The MLS feed carries active and pending homes only, so that
-         grid is empty until sold data is licensed. Hide the whole section
-         rather than show a visitor an empty shelf. */
-      const hideWrap = grid.hasAttribute("data-hide-if-empty")
-        ? (grid.closest("section") || grid)          // hide the heading too, not just the grid
-        : grid.closest("[data-hide-if-empty]");
-      if (hideWrap) hideWrap.style.display = list.length ? "" : "none";
-
-      grid.innerHTML = list.length ? list.map(listingCard).join("") : emptyState(grid.getAttribute("data-empty"));
-      const count = page.querySelector("[data-results-count]");
-      if (count) count.textContent = list.length + (list.length === 1 ? " property" : " properties");
-      if (window.observeReveals) window.observeReveals(grid);
-      watchPhotoSlots(grid);   // real MLS photos arrive from /api/media as cards scroll in
-    };
-
-    render();
-    const page = grid.closest("[data-listing-page]") || document;
-    ["data-listing-search", "data-listing-sort", "data-listing-type"].forEach((attr) => {
-      const el = page.querySelector("[" + attr + "]");
-      if (el) el.addEventListener(attr === "data-listing-search" ? "input" : "change", render);
-    });
-  }));
+  await Promise.all(grids.map((grid) =>
+    grid.getAttribute("data-scope") === "all"
+      ? Promise.resolve(initServerGrid(grid))
+      : initAgentGrid(grid)
+  ));
 }
 
 document.addEventListener("DOMContentLoaded", initListingGrids);

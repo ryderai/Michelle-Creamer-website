@@ -1122,3 +1122,43 @@ html.pl-done .hero-stats { transition-delay: .95s; }
   line-height: 1.55;
 }
 .form-error a { color: inherit; font-weight: 600; }
+
+/* ============================================================
+   SEARCH PAGING
+   The MLS holds ~12,600 listings. The browser only ever holds one
+   page of them, so these controls are how a visitor reaches the
+   rest.
+   ============================================================ */
+.lc-pager-wrap { grid-column: 1 / -1; }
+.lc-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 34px auto 0;
+  padding: 18px 22px;
+  max-width: 760px;
+  border-top: 1px solid rgba(11, 21, 36, .10);
+}
+.lc-pager-count {
+  font-size: 14px;
+  color: var(--text-soft);
+  text-align: center;
+  line-height: 1.5;
+}
+.lc-pager-count b { color: var(--text); font-weight: 600; }
+.lc-pager-page {
+  display: block;
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: .65;
+  margin-top: 3px;
+}
+.lc-pager button[disabled] { opacity: .35; pointer-events: none; }
+[data-listings][aria-busy="true"] { opacity: .45; transition: opacity .2s ease; }
+
+@media (max-width: 640px) {
+  .lc-pager { justify-content: center; padding: 16px 10px; }
+}

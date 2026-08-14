@@ -8,29 +8,39 @@
    anyone who views source. IDX license terms also prohibit
    re-serving the raw feed publicly.
 
-   So: this function holds the secret server-side, talks to
-   Paragon, normalizes the records into the exact shape
-   js/listings.js already renders, and returns clean JSON.
+   WHY IT PAGES AND FILTERS SERVER-SIDE (rewritten Aug 13 2026)
+   Greater Alabama MLS holds 12,620 active + pending listings.
+   The old version asked for $top=200 and stopped, so the search
+   page showed 1.6% of the market and called it a search.
 
-   ENVIRONMENT VARIABLES (set in Vercel → Settings → Environment
-   Variables. Never commit these.)
+   Sending all 12,620 to the browser is not the answer either —
+   that is tens of megabytes and roughly 64 round trips to the
+   MLS, well past a serverless function's time limit. So the
+   filtering, sorting and paging all happen ON THE MLS, and the
+   browser asks for one page at a time. Every listing is reachable;
+   none of them are loaded needlessly.
+
+   ENVIRONMENT VARIABLES (Vercel → Settings → Environment Variables)
      MLS_CLIENT_ID       e.g. AISCidx
      MLS_CLIENT_SECRET   the vendor password
-     MLS_AGENT_MLS_ID    Michelle's agent ID (optional — see below)
+     MLS_AGENT_MLS_ID    Michelle's agent ID (creamemi)
 
    ENDPOINT
-     GET /api/listings              → Michelle's listings (if agent id set)
-     GET /api/listings?scope=all    → all active market listings
-     GET /api/listings?debug=1      → counts + timing, no listing data
+     GET /api/listings                        → Michelle's own listings
+     GET /api/listings?scope=all              → the whole MLS, page 1
+     GET /api/listings?scope=all&q=hoover&page=2&pageSize=24
+     GET /api/listings?debug=1                → counts + timing, no rows
+     GET /api/listings?probe=1                → what the MLS accepts
    ============================================================ */
 
 const TOKEN_URL    = "https://galmls.paragonrels.com/OData/GALMLS/identity/connect/token";
 const SERVICE_ROOT = "https://galmls.paragonrels.com/OData/GALMLS/DD1.7";
 
-const LUXURY_FLOOR   = 1000000;  // price at/above this gets the "Luxury" chip
-const PAGE_SIZE      = 200;      // records per request
-const MAX_RECORDS    = 1000;     // hard stop so a bad filter can't run away
-const CACHE_SECONDS  = 60 * 60 * 3;   // 3h — well inside the 12h IDX refresh floor
+const LUXURY_FLOOR    = 1000000;   // price at/above this gets the "Luxury" chip
+const DEFAULT_PAGE    = 24;        // listings per page for a search
+const MAX_PAGE        = 96;        // hard cap on pageSize a caller can ask for
+const AGENT_MAX       = 200;       // one agent never has more than this
+const CACHE_SECONDS   = 60 * 60 * 3;    // 3h — well inside the 12h IDX refresh floor
 
 /* Statuses we display. Anything else (Withdrawn, Expired, Canceled,
    Hold, Incomplete, Delete) is intentionally excluded. */
@@ -45,7 +55,7 @@ const STATUS_MAP = {
 };
 
 /* ---------- token cache (survives while the instance stays warm) ---------- */
-let _token = null;        // { value, expiresAt }
+let _token = null;
 
 async function getToken() {
   if (_token && Date.now() < _token.expiresAt) return _token.value;
@@ -64,10 +74,8 @@ async function getToken() {
     body: "grant_type=client_credentials&scope=OData"
   });
 
-  if (!res.ok) {
-    // Deliberately does not echo the response body — it can contain the credential.
-    throw new Error(`AUTH: token request failed (${res.status})`);
-  }
+  // Deliberately does not echo the response body — it can contain the credential.
+  if (!res.ok) throw new Error(`AUTH: token request failed (${res.status})`);
 
   const json = await res.json();
   if (!json.access_token) throw new Error("AUTH: no access_token in response");
@@ -92,23 +100,9 @@ async function odata(path, { retry = true } = {}) {
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`ODATA ${res.status} on ${path.split("?")[0]}: ${body.slice(0, 300)}`);
+    throw new Error(`ODATA ${res.status} on ${path.split("?")[0]}: ${body.slice(0, 220)}`);
   }
   return res.json();
-}
-
-/* Follow @odata.nextLink until we run out or hit MAX_RECORDS. */
-async function odataAll(path) {
-  const out = [];
-  let page = await odata(path);
-  out.push(...(page.value || []));
-
-  while (page["@odata.nextLink"] && out.length < MAX_RECORDS) {
-    const next = page["@odata.nextLink"].replace(SERVICE_ROOT + "/", "");
-    page = await odata(next);
-    out.push(...(page.value || []));
-  }
-  return out.slice(0, MAX_RECORDS);
 }
 
 /* ---------- field mapping: RESO Data Dictionary → the site's shape ---------- */
@@ -135,24 +129,15 @@ function mapBaths(raw) {
   return half ? full + 0.5 * half : full;
 }
 
-function mapPhotos(raw) {
-  const media = Array.isArray(raw.Media) ? raw.Media : [];
-  return media
-    .filter(m => m && m.MediaURL && (!m.MediaCategory || /photo|image/i.test(m.MediaCategory)))
-    .sort((a, b) => (a.Order ?? a.MediaKey ?? 0) - (b.Order ?? b.MediaKey ?? 0))
-    .map(m => m.MediaURL);
-}
-
-function normalize(raw) {
+function normalize(raw, { lean = false } = {}) {
   const status = STATUS_MAP[raw.StandardStatus];
   if (!status) return null;                       // drop anything not displayable
 
-  const photos = mapPhotos(raw);
-  const price  = raw.StandardStatus === "Closed"
+  const price = raw.StandardStatus === "Closed"
     ? (raw.ClosePrice ?? raw.ListPrice)
     : raw.ListPrice;
 
-  return {
+  const out = {
     id:      String(raw.ListingKey || raw.ListingId),
     mls:     String(raw.ListingId  || raw.ListingKey),
     status,
@@ -177,12 +162,9 @@ function normalize(raw) {
        would show a visitor the wrong building. The browser fills these in
        from /api/media. photosCount is the MLS's own count, so the front end
        knows whether a photo request is even worth making. */
-    photo:       photos[0] || null,
-    photos,
+    photo:       null,
+    photos:      [],
     photosCount: raw.PhotosCount ?? raw.PicturesCount ?? null,
-    blurb:       "",
-    description: raw.PublicRemarks || "",
-    details:     null,
 
     /* IDX attribution — REQUIRED on display for every listing that
        is not Michelle's own. See NAR IDX Policy 7.58. */
@@ -193,18 +175,115 @@ function normalize(raw) {
 
     modified: raw.ModificationTimestamp || null
   };
+
+  /* PublicRemarks is by far the biggest field. A grid of cards never shows it,
+     and carrying it would roughly triple the size of a search page. The detail
+     page fetches its own listing, so it still gets the full text. */
+  if (!lean) {
+    out.blurb = "";
+    out.description = raw.PublicRemarks || "";
+    out.details = null;
+  }
+  return out;
+}
+
+/* ---------- turning URL parameters into an MLS query ---------- */
+
+const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+const num = (v) => {
+  const n = Number(String(v).replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/* Text search. GALMLS accepts contains(); this looks across the fields a
+   person actually types into a property search. */
+function textClause(text) {
+  const t = String(text).trim().slice(0, 60);
+  if (!t) return null;
+  const fields = ["City", "PostalCode", "UnparsedAddress", "SubdivisionName"];
+  return "(" + fields.map(f => `contains(${f},${q(t)})`).join(" or ") + ")";
+}
+
+/* Property type. These are tried against the MLS and dropped if rejected —
+   see buildAttempts(). */
+const TYPE_CLAUSE = {
+  "lot":           "(contains(PropertyType,'Land') or contains(PropertySubType,'Lot') or contains(PropertySubType,'Acreage'))",
+  "commercial":    "(contains(PropertyType,'Commercial') or contains(PropertySubType,'Commercial'))",
+  "rental":        "(contains(PropertyType,'Lease') or contains(PropertyType,'Rental'))",
+  "condo":         "(contains(PropertySubType,'Condo'))",
+  "townhome":      "(contains(PropertySubType,'Town'))",
+  "single-family": "(contains(PropertySubType,'Single'))"
+};
+
+const SORTS = {
+  "newest":     "ModificationTimestamp desc",
+  "price-desc": "ListPrice desc",
+  "price-asc":  "ListPrice asc",
+  "sqft-desc":  "LivingArea desc"
+};
+
+function buildClauses(p, agentId) {
+  const required = [];
+  const optional = [];      // dropped one at a time if the MLS rejects the query
+
+  required.push("(StandardStatus eq 'Active' or StandardStatus eq 'Pending')");
+
+  if (p.scope !== "all" && agentId) {
+    required.push(`(ListAgentMlsId eq ${q(agentId)} or CoListAgentMlsId eq ${q(agentId)})`);
+  }
+
+  const text = p.q ? textClause(p.q) : null;
+  if (text) optional.push(text);
+
+  if (p.type && TYPE_CLAUSE[p.type]) optional.push(TYPE_CLAUSE[p.type]);
+
+  const min = num(p.minPrice), max = num(p.maxPrice);
+  if (min) optional.push(`ListPrice ge ${min}`);
+  if (max) optional.push(`ListPrice le ${max}`);
+  if (p.luxury === "1") optional.push(`ListPrice ge ${LUXURY_FLOOR}`);
+
+  const beds = num(p.beds), baths = num(p.baths);
+  if (beds)  optional.push(`BedroomsTotal ge ${beds}`);
+  if (baths) optional.push(`BathroomsTotalInteger ge ${baths}`);
+
+  if (p.newConstruction === "1") optional.push("NewConstructionYN eq true");
+
+  return { required, optional };
+}
+
+/* GALMLS has a history of 500-ing on filter shapes that look perfectly legal.
+   Rather than fail the whole search, try the full query first and then drop
+   the optional clauses one at a time. The caller is told which ones survived,
+   so the page can say so instead of silently lying about the results. */
+function buildAttempts({ required, optional }, { top, skip, orderby }) {
+  const attempts = [];
+  for (let drop = 0; drop <= optional.length; drop++) {
+    const kept = optional.slice(0, optional.length - drop);
+    const filter = [...required, ...kept].join(" and ");
+    let path = `Property?$filter=${encodeURIComponent(filter)}&$count=true&$top=${top}`;
+    if (skip) path += `&$skip=${skip}`;
+    if (orderby) path += `&$orderby=${encodeURIComponent(orderby)}`;
+    attempts.push({ path, dropped: drop, keptOptional: kept.length });
+    if (orderby) {
+      // Some servers reject $orderby on certain fields; keep the same filter
+      // but let go of the sort before giving up any of the search terms.
+      attempts.push({ path: path.replace(`&$orderby=${encodeURIComponent(orderby)}`, ""),
+                      dropped: drop, keptOptional: kept.length, noSort: true });
+    }
+  }
+  return attempts;
 }
 
 /* ---------- open houses (separate RESO resource; optional on some servers) ---------- */
 async function attachOpenHouses(listings) {
+  if (!listings.length) return;
   try {
     const now = new Date().toISOString().split(".")[0] + "Z";
-    const rows = await odataAll(
-      `OpenHouse?$filter=OpenHouseStartTime gt ${now}` +
-      `&$select=ListingKey,OpenHouseStartTime,OpenHouseEndTime&$top=${PAGE_SIZE}`
-    );
+    const page = await odata(
+      `OpenHouse?$filter=${encodeURIComponent(`OpenHouseStartTime gt ${now}`)}` +
+      `&$select=ListingKey,OpenHouseStartTime,OpenHouseEndTime&$top=500`);
     const byKey = new Map();
-    for (const oh of rows) {
+    for (const oh of (page.value || [])) {
       const key = String(oh.ListingKey);
       if (byKey.has(key)) continue;                       // keep the soonest only
       const start = new Date(oh.OpenHouseStartTime);
@@ -222,87 +301,154 @@ async function attachOpenHouses(listings) {
   }
 }
 
+/* The open-houses page is the one view that cannot be expressed as a Property
+   filter — "has an upcoming open house" lives in a different resource. So ask
+   OpenHouse first, then fetch exactly those listings. */
+async function openHouseListings(limit) {
+  const now = new Date().toISOString().split(".")[0] + "Z";
+  const page = await odata(
+    `OpenHouse?$filter=${encodeURIComponent(`OpenHouseStartTime gt ${now}`)}` +
+    `&$orderby=OpenHouseStartTime&$top=${Math.min(limit * 3, 300)}`);
+  const keys = [];
+  for (const oh of (page.value || [])) {
+    const k = String(oh.ListingKey || "");
+    if (k && !keys.includes(k)) keys.push(k);
+    if (keys.length >= limit) break;
+  }
+  if (!keys.length) return { rows: [], total: 0 };
+
+  const filter = "(" + keys.map(k => `ListingKey eq ${q(k)}`).join(" or ") + ")" +
+                 " and (StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
+  const res = await odata(`Property?$filter=${encodeURIComponent(filter)}&$count=true&$top=${keys.length}`);
+  return { rows: res.value || [], total: res["@odata.count"] ?? (res.value || []).length };
+}
+
+/* ---------- probe: what does this MLS actually accept? ---------- */
+async function probe(res) {
+  const out = { ok: true, ranAt: new Date().toISOString(), checks: {} };
+  const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
+
+  const tryClause = async (label, clause) => {
+    try {
+      const r = await odata(`Property?$filter=${encodeURIComponent(base + (clause ? " and " + clause : ""))}&$count=true&$top=1`);
+      out.checks[label] = { ok: true, count: r["@odata.count"] ?? null };
+    } catch (err) {
+      out.checks[label] = { ok: false, error: err.message.slice(0, 130) };
+    }
+  };
+
+  await tryClause("baseline", null);
+  await tryClause("text-contains", textClause("hoover"));
+  await tryClause("price-min", "ListPrice ge 500000");
+  await tryClause("price-range", "ListPrice ge 300000 and ListPrice le 900000");
+  await tryClause("beds", "BedroomsTotal ge 3");
+  await tryClause("baths", "BathroomsTotalInteger ge 2");
+  await tryClause("newconstruction", "NewConstructionYN eq true");
+  for (const [k, v] of Object.entries(TYPE_CLAUSE)) await tryClause("type:" + k, v);
+
+  // Does deep paging work? $skip is the only way through 12k rows here.
+  for (const skip of [0, 200, 5000, 12000]) {
+    try {
+      const r = await odata(`Property?$filter=${encodeURIComponent(base)}&$top=1&$skip=${skip}`);
+      out.checks[`skip-${skip}`] = { ok: true, rows: (r.value || []).length };
+    } catch (err) {
+      out.checks[`skip-${skip}`] = { ok: false, error: err.message.slice(0, 110) };
+    }
+  }
+
+  // What page size will it actually give us?
+  for (const top of [200, 500, 1000]) {
+    try {
+      const r = await odata(`Property?$filter=${encodeURIComponent(base)}&$top=${top}`);
+      out.checks[`top-${top}`] = { asked: top, got: (r.value || []).length };
+    } catch (err) {
+      out.checks[`top-${top}`] = { asked: top, error: err.message.slice(0, 110) };
+    }
+  }
+
+  // The real values in the data, so type filters can be written from fact.
+  try {
+    const r = await odata(`Property?$filter=${encodeURIComponent(base)}&$top=200`);
+    const rows = r.value || [];
+    const uniq = (f) => [...new Set(rows.map(x => x[f]).filter(Boolean))].sort();
+    out.checks.vocabulary = {
+      PropertyType: uniq("PropertyType"),
+      PropertySubType: uniq("PropertySubType").slice(0, 30),
+      StandardStatus: uniq("StandardStatus")
+    };
+  } catch (err) {
+    out.checks.vocabulary = { error: err.message.slice(0, 130) };
+  }
+
+  return res.status(200).json(out);
+}
+
 /* ---------- handler ---------- */
 export default async function handler(req, res) {
   const started = Date.now();
-  const scope   = (req.query.scope || "agent").toString();
+  const p       = req.query || {};
+  const scope   = (p.scope || "agent").toString();
   const agentId = process.env.MLS_AGENT_MLS_ID;
 
   try {
-    // GALMLS's OData rejects $expand=Media (501) and 500s on non-standard status
-    // tokens. Use the STANDARD DD status values (spaced), no $expand, and never
-    // fall back to an unfiltered query — returning other agents'/sold listings as
-    // site inventory would violate IDX display + attribution rules.
-    const agentClause = (scope === "agent" && agentId)
-      ? ` and (ListAgentMlsId eq '${agentId}' or CoListAgentMlsId eq '${agentId}')`
-      : "";
-    const statusFilter = (arr) => "(" + arr.map(s => `StandardStatus eq '${s}'`).join(" or ") + ")";
-    const FOR_SALE = ["Active", "Active Under Contract", "Coming Soon", "Pending"];
+    if (p.probe) return await probe(res);
 
-    // Progressively narrower filters, all with valid enum values, orderby optional.
-    const filters = [statusFilter(FOR_SALE), statusFilter(["Active", "Pending"]), statusFilter(["Active"])];
-    const variants = [];
-    for (const f of filters) {
-      const base = `Property?$filter=${encodeURIComponent(f + agentClause)}`;
-      variants.push(`${base}&$orderby=ModificationTimestamp desc&$top=${PAGE_SIZE}`);
-      variants.push(`${base}&$top=${PAGE_SIZE}`);
-    }
+    /* Michelle has a dozen listings; a market search has 12,620. Only the
+       market view needs paging, and only it should be trimmed for size. */
+    const isSearch = scope === "all";
+    const pageSize = isSearch
+      ? Math.min(Math.max(parseInt(p.pageSize, 10) || DEFAULT_PAGE, 1), MAX_PAGE)
+      : AGENT_MAX;
+    const page = Math.max(parseInt(p.page, 10) || 1, 1);
+    const skip = isSearch ? (page - 1) * pageSize : 0;
+    const orderby = SORTS[p.sort] || SORTS.newest;
 
-    let raw = null, usedVariant = -1;
+    let rows = [], total = null, usedAttempt = -1, droppedFilters = 0;
     const attempts = [];
-    for (let i = 0; i < variants.length; i++) {
-      try {
-        raw = await odataAll(variants[i]);
-        usedVariant = i;
-        break;
-      } catch (err) {
-        attempts.push(`v${i}: ${err.message.slice(0, 160)}`);
+
+    if (p.openHouse === "1") {
+      const oh = await openHouseListings(pageSize);
+      rows = oh.rows; total = oh.total; usedAttempt = 0;
+    } else {
+      const clauses = buildClauses({ ...p, scope }, agentId);
+      const plan = buildAttempts(clauses, { top: pageSize, skip, orderby });
+
+      for (let i = 0; i < plan.length; i++) {
+        try {
+          const r = await odata(plan[i].path);
+          rows = r.value || [];
+          total = r["@odata.count"] ?? null;
+          usedAttempt = i;
+          droppedFilters = plan[i].dropped;
+          break;
+        } catch (err) {
+          attempts.push(`a${i}: ${err.message.slice(0, 130)}`);
+        }
+      }
+      if (usedAttempt === -1) {
+        throw new Error("ODATA every filter variant failed :: " + attempts.join(" | "));
       }
     }
-    if (raw === null) throw new Error("ODATA all filtered variants failed :: " + attempts.join(" | "));
 
-    const listings = raw.map(normalize).filter(Boolean);
+    const listings = rows.map(r => normalize(r, { lean: isSearch })).filter(Boolean);
     await attachOpenHouses(listings);
 
-    if (req.query.debug) {
-      /* How many listings actually MATCH, regardless of the page size we ask
-         for. If this comes back far above rawCount, the site is showing a
-         truncated slice of the MLS and PAGE_SIZE / paging needs work. Asking
-         for $top=1 keeps it cheap. */
-      let totalAvailable = null, countNote = null, nextLinkSeen = null;
-      try {
-        const f = statusFilter(["Active", "Pending"]) + agentClause;
-        const probe = await odata(`Property?$filter=${encodeURIComponent(f)}&$top=1&$count=true`);
-        totalAvailable = probe["@odata.count"] ?? null;
-        nextLinkSeen = Boolean(probe["@odata.nextLink"]);
-        if (totalAvailable == null) countNote = "server did not return @odata.count";
-      } catch (err) {
-        countNote = "$count=true rejected: " + err.message.slice(0, 120);
-      }
+    if (total == null) total = listings.length;
+    const hasMore = isSearch ? skip + listings.length < total : false;
 
+    if (p.debug) {
       return res.status(200).json({
         ok: true,
-        scope,
-        pageSize: PAGE_SIZE,
-        maxRecords: MAX_RECORDS,
-        totalAvailable,          // what the MLS says exists
-        nextLinkSeen,            // does the server offer a next page at all?
-        countNote,
-        truncated: totalAvailable != null && totalAvailable > raw.length,
+        scope, page, pageSize,
         agentIdConfigured: Boolean(agentId),
-        rawCount: raw.length,
-        displayedCount: listings.length,
-        byStatus: listings.reduce((a, l) => ((a[l.status] = (a[l.status] || 0) + 1), a), {}),
-        // withPhotos stays 0 by design: GALMLS blocks $expand=Media, so pictures
-        // never ride along with the listing. mlsSaysHasPhotos is the MLS's own
-        // count and is what proves photos EXIST to be fetched from /api/media.
-        withPhotos: listings.filter(l => l.photos.length).length,
-        mlsSaysHasPhotos: listings.filter(l => (l.photosCount || 0) > 0).length,
-        photoKeySample: listings.filter(l => (l.photosCount || 0) > 0).slice(0, 5)
-                                .map(l => ({ key: l.id, mls: l.mls, photosCount: l.photosCount })),
-        usedVariant,
+        returned: listings.length,
+        totalAvailable: total,
+        hasMore,
+        droppedFilters,
+        usedAttempt,
         attempts,
-        sampleAgentIds: [...new Set(raw.map(r => r.ListAgentMlsId).filter(Boolean))].slice(0, 10),
+        byStatus: listings.reduce((a, l) => ((a[l.status] = (a[l.status] || 0) + 1), a), {}),
+        mlsSaysHasPhotos: listings.filter(l => (l.photosCount || 0) > 0).length,
         ms: Date.now() - started
       });
     }
@@ -312,6 +458,13 @@ export default async function handler(req, res) {
     return res.status(200).json({
       listings,
       count: listings.length,
+      total,
+      page,
+      pageSize,
+      hasMore,
+      /* If the MLS rejected part of the search, say so. The page tells the
+         visitor rather than quietly showing them the wrong results. */
+      droppedFilters,
       source: "Greater Alabama MLS",
       generatedAt: new Date().toISOString()
     });
@@ -319,11 +472,9 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error("[idx]", err.message);
     // Never leak the credential or the raw upstream body to the browser.
-    const kind = err.message.startsWith("CONFIG") ? 500
-               : err.message.startsWith("AUTH")   ? 502
-               : 502;
+    const kind = err.message.startsWith("CONFIG") ? 500 : 502;
     return res.status(kind).json({
-      listings: [],
+      listings: [], count: 0, total: 0, hasMore: false,
       error: err.message.split(":")[0] || "UPSTREAM",
       message: "Listing data is temporarily unavailable."
     });
