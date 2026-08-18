@@ -248,6 +248,21 @@ function buildClauses(p, agentId) {
 
   required.push("(StandardStatus eq 'Active' or StandardStatus eq 'Pending')");
 
+  /* Single-listing lookup for property.html.
+     The detail page used to pull ONE page of the market (24 of ~12,600) and
+     search it in the browser, so any listing that did not happen to be on that
+     page showed "Awaiting MLS connection" — which was every one of Michelle's
+     own listings, because the home page links to those and they are sorted
+     nowhere near the top of a market-wide query. Now the MLS does the lookup.
+     The status filter stays (the IDX licence only permits Active and Pending),
+     but the agent filter must NOT apply: a visitor can open any brokerage's
+     listing from the search results. */
+  const wantId = String(p.id || "").trim();
+  if (wantId) {
+    required.push(`ListingKey eq ${q(wantId)}`);
+    return { required, optional };
+  }
+
   if (p.scope !== "all" && agentId) {
     required.push(`(ListAgentMlsId eq ${q(agentId)} or CoListAgentMlsId eq ${q(agentId)})`);
   }
@@ -490,7 +505,8 @@ export default async function handler(req, res) {
 
     /* Michelle has a dozen listings; a market search has 12,620. Only the
        market view needs paging, and only it should be trimmed for size. */
-    const isSearch = scope === "all";
+    const isIdLookup = !!String(p.id || "").trim();
+    const isSearch = scope === "all" && !isIdLookup;
     const pageSize = isSearch
       ? Math.min(Math.max(parseInt(p.pageSize, 10) || DEFAULT_PAGE, 1), MAX_PAGE)
       : AGENT_MAX;

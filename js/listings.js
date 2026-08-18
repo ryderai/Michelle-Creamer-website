@@ -112,6 +112,40 @@ async function fetchListings(scope) {
   return _cache.get(scope);
 }
 
+/* One listing, looked up by the MLS instead of by scanning a page in the
+   browser. property.html links carry ?id=<ListingKey>; asking the feed for
+   that single record is both correct and far cheaper than pulling a page and
+   hoping the listing is on it. Returns null when there is no match, so the
+   caller can fall back rather than break. */
+const _oneCache = new Map();
+async function fetchListingById(key) {
+  key = String(key || "").trim();
+  if (!key) return null;
+  if (_oneCache.has(key)) return _oneCache.get(key);
+  let hit = null;
+  try {
+    if (LISTINGS_API.mode === "live" && LISTINGS_API.endpoint) {
+      const res = await fetch(LISTINGS_API.endpoint + "?id=" + encodeURIComponent(key), {
+        headers: Object.assign(
+          LISTINGS_API.apiKey ? { Authorization: "Bearer " + LISTINGS_API.apiKey } : {},
+          LISTINGS_API.headers
+        )
+      });
+      if (res.ok) {
+        const data = await res.json();
+        _feedGeneratedAt = data.generatedAt || _feedGeneratedAt;
+        const rows = (data.value || data.listings || []).map(normalizeListing);
+        hit = rows[0] || null;
+      }
+    }
+  } catch (err) {
+    console.warn("[listings] single-listing lookup failed:", err);
+  }
+  _oneCache.set(key, hit);
+  return hit;
+}
+window.fetchListingById = fetchListingById;
+
 /* ---------- formatting helpers ---------- */
 /* MLS text (addresses, agent names) goes straight into HTML attributes here.
    A single stray quote in a feed record would otherwise break the markup, so

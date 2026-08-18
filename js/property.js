@@ -173,8 +173,16 @@
        by clicking any card in the property search, and most of those belong to
        other brokerages — looking them up in her own list would show "listing not
        found" for nearly every home on the site. */
-    const all = await fetchListings("all");
-    const l = all.find((x) => x.id === id || x.mls === mls || x.mls.replace("PLACEHOLDER-", "") === mls);
+    /* Ask the MLS for THIS listing by key, and load a page of the market at the
+       same time for the "Similar Listings" strip. Scanning that page for the
+       listing itself is kept only as a fallback: it works when the listing
+       happens to be on it, and costs nothing when the direct lookup succeeded. */
+    const [one, all] = await Promise.all([
+      fetchListingById(id || mls),
+      fetchListings("all")
+    ]);
+    const l = one ||
+      all.find((x) => x.id === id || x.mls === mls || x.mls.replace("PLACEHOLDER-", "") === mls);
     if (!l) {
       // No listing to show — stay on the page, hide the empty template,
       // and explain that this page fills in from the MLS feed.
