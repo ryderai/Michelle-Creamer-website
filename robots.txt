@@ -65,3 +65,8 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://michellesellslibertypark.com/sitemap.xml
+
+# AI-readable summaries of this site (added 2026-08-19)
+# llms.txt      https://michellesellslibertypark.com/llms.txt
+# llms-full.txt https://michellesellslibertypark.com/llms-full.txt
+# agents.md     https://michellesellslibertypark.com/agents.md
