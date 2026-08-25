@@ -188,6 +188,7 @@
       // and explain that this page fills in from the MLS feed.
       ["#pd-gallery", "#pd-desc", "#pd-details", "#pd-calc-wrap", "#pd-form-wrap", "#pd-loc-wrap"].forEach((s) => { const el = $(s); if (el) el.style.display = "none"; });
       $("#pd-head").innerHTML =
+        "<h1>Property Details</h1>" +
         '<div class="pd-notice">' +
           '<span class="pd-notice-dot"></span>' +
           "<div><b>Awaiting MLS connection</b>" +

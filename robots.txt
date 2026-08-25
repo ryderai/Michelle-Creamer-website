@@ -70,3 +70,8 @@ Sitemap: https://michellesellslibertypark.com/sitemap.xml
 # llms.txt      https://michellesellslibertypark.com/llms.txt
 # llms-full.txt https://michellesellslibertypark.com/llms-full.txt
 # agents.md     https://michellesellslibertypark.com/agents.md
+#
+# Markdown mirror of every page (added 2026-08-25). Each HTML page links to its
+# own mirror with <link rel="alternate" type="text/markdown">. Example:
+# https://michellesellslibertypark.com/liberty-park.html -> /liberty-park.md
+# The HTML page is canonical; the mirror is a plain-text copy for AI readers.

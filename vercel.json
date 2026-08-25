@@ -9,5 +9,50 @@
     "api/*.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/GEO-BASELINE-2026-08-19.md",
+      "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/GEO-RESCAN-2026-08-25.md",
+      "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/GO-LIVE-MONDAY.md",
+      "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/HANDOFF-FOR-CJ-ANDREW.md",
+      "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/listings-js-patch.md",
+      "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/property.md",
+      "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/GEO-WEEK2-BUILD-2026-08-25.md",
+      "destination": "/_internal-not-public"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:slug.md",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://michellesellslibertypark.com/:slug.html>; rel=\"canonical\""
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        }
+      ]
+    }
+  ]
 }

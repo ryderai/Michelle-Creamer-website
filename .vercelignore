@@ -1,0 +1,11 @@
+# Internal working documents. These must NEVER be served on the public site.
+# Verified 2026-08-25: GEO-BASELINE-2026-08-19.md was publicly readable at
+# https://www.michellesellslibertypark.com/GEO-BASELINE-2026-08-19.md
+# Anything added here stays in the git repo but is excluded from the deploy.
+GEO-BASELINE-*.md
+GEO-RESCAN-*.md
+GO-LIVE-MONDAY.md
+HANDOFF-FOR-CJ-ANDREW.md
+listings-js-patch.md
+property.md
+GEO-WEEK2-*.md
