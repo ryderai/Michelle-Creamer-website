@@ -38,6 +38,10 @@
     {
       "source": "/GEO-WEEK2-BUILD-2026-08-25.md",
       "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/GEO-WEEK2-RESULT-2026-08-25.md",
+      "destination": "/_internal-not-public"
     }
   ],
   "headers": [
