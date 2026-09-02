@@ -2,7 +2,7 @@
 title: Liberty Park — Vestavia Hills, AL | Michelle Creamer, ARC Realty
 description: Liberty Park community guide: homes for sale, schools, Old Overton, The Bray, and market insight from resident expert Michelle Creamer.
 source: https://www.michellesellslibertypark.com/liberty-park.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/liberty-park.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

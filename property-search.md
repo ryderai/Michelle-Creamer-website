@@ -2,7 +2,7 @@
 title: Search Listings | Michelle Creamer, ARC Realty
 description: Search homes for sale in Liberty Park, Vestavia Hills, Hoover, and greater Birmingham with Michelle Creamer, ARC Realty.
 source: https://www.michellesellslibertypark.com/property-search.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/property-search.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

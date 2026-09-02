@@ -2,7 +2,7 @@
 title: Open Houses | Michelle Creamer, ARC Realty
 description: Upcoming open houses hosted by Michelle Creamer in Liberty Park and Vestavia Hills, AL.
 source: https://www.michellesellslibertypark.com/open-houses.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/open-houses.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

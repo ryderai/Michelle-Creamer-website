@@ -2,7 +2,7 @@
 title: Fair Housing Statement | Michelle Creamer, ARC Realty
 description: Michelle Creamer and ARC Realty comply with federal, state and local fair housing laws. How to file a housing discrimination complaint with HUD.
 source: https://www.michellesellslibertypark.com/fair-housing-statement.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/fair-housing-statement.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

@@ -2,7 +2,7 @@
 title: Marketing Your Home | Michelle Creamer, ARC Realty
 description: How Michelle Creamer and ARC Realty market homes: pricing, staging, photography, and distribution across 750+ websites.
 source: https://www.michellesellslibertypark.com/marketing-your-home.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/marketing-your-home.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

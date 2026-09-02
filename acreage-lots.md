@@ -2,7 +2,7 @@
 title: Acreage & Lots | Michelle Creamer, ARC Realty
 description: Homesites and land for sale in Liberty Park and Old Overton — build your custom home in Vestavia Hills, AL.
 source: https://www.michellesellslibertypark.com/acreage-lots.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/acreage-lots.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

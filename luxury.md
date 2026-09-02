@@ -2,7 +2,7 @@
 title: Luxury Properties | Michelle Creamer, ARC Realty
 description: Luxury homes and estates in Old Overton, Liberty Park, and Mountain Brook with Michelle Creamer — ARC Realty, Luxury Board of Regents for Birmingham.
 source: https://www.michellesellslibertypark.com/luxury.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/luxury.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

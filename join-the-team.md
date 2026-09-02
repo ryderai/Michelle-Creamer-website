@@ -2,7 +2,7 @@
 title: Join the Team | ARC Realty — Michelle Creamer
 description: Build your real estate career with ARC Realty — training, mentorship, marketing support, and one of the highest starting commission rates in the area.
 source: https://www.michellesellslibertypark.com/join-the-team.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/join-the-team.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

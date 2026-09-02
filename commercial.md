@@ -2,7 +2,7 @@
 title: Commercial Properties | Michelle Creamer, ARC Realty
 description: Commercial real estate along the Highway 280 corridor and Liberty Park town center with ARC Realty.
 source: https://www.michellesellslibertypark.com/commercial.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/commercial.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

@@ -2,7 +2,7 @@
 title: DMCA Notice | Michelle Creamer, ARC Realty
 description: How to send a copyright infringement notice about content on michellesellslibertypark.com, and where to send it.
 source: https://www.michellesellslibertypark.com/dmca-notice.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/dmca-notice.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.

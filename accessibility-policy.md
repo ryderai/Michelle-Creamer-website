@@ -2,7 +2,7 @@
 title: Accessibility Policy | Michelle Creamer, ARC Realty
 description: How michellesellslibertypark.com works toward WCAG 2.1 Level AA, and how to report an accessibility problem.
 source: https://www.michellesellslibertypark.com/accessibility-policy.html
-site: Michelle Creamer, Realtor - ARC Realty
+site: Michelle Creamer
 generated: 2026-08-25
 canonical: https://www.michellesellslibertypark.com/accessibility-policy.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
