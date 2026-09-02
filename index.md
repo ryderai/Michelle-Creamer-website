@@ -1,10 +1,10 @@
 ---
 title: Michelle Creamer, Realtor® | Liberty Park & Vestavia Hills
 description: Michelle Creamer is the #1 sales agent in Vestavia Hills and Liberty Park, AL, with ARC Realty. Search every listing and get a free home valuation.
-source: https://michellesellslibertypark.com/
+source: https://www.michellesellslibertypark.com/
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/
+canonical: https://www.michellesellslibertypark.com/
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

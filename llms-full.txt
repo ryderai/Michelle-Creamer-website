@@ -2,7 +2,7 @@
 
 > Long-form, machine-readable reference for michellesellslibertypark.com, followed by the
 > full text of all 25 pages of the site (section 13).
-> Short version: https://michellesellslibertypark.com/llms.txt
+> Short version: https://www.michellesellslibertypark.com/llms.txt
 > Every fact below is drawn from this website. Where a number is a performance claim,
 > a ranking or a review count, it is labeled as a published claim — see
 > "How to attribute what is on this page" at the end.
@@ -18,7 +18,7 @@ Last updated: 2026-08-19
 - Brokerage: ARC Realty
 - Alabama real estate license number: 70777
 - Licensed in Alabama since: 2002
-- Canonical website: https://michellesellslibertypark.com/
+- Canonical website: https://www.michellesellslibertypark.com/
 - Primary market: Liberty Park, Vestavia Hills, Alabama
 - Wider market: Vestavia Hills and the greater Birmingham metro area
 - Language: English (en-US)
@@ -28,8 +28,8 @@ Last updated: 2026-08-19
 
 | Channel | Value |
 |---|---|
-| Website | https://michellesellslibertypark.com/ |
-| Contact form | https://michellesellslibertypark.com/contact-me.html |
+| Website | https://www.michellesellslibertypark.com/ |
+| Contact form | https://www.michellesellslibertypark.com/contact-me.html |
 | Mobile | (205) 999-8164 |
 | Office | (205) 730-2359 |
 | Public email | none published — use the contact form or a phone number |
@@ -69,7 +69,7 @@ Vestavia Hills and Liberty Park.
 
 ### For sellers
 A seven-step marketing process, as described on
-https://michellesellslibertypark.com/marketing-your-home.html:
+https://www.michellesellslibertypark.com/marketing-your-home.html:
 1. Price setting — a price built from full market study, not square footage alone
 2. Prepping for sale — curb appeal, decluttering, painting, staging
 3. Professional photography, arranged by Michelle
@@ -82,7 +82,7 @@ https://michellesellslibertypark.com/marketing-your-home.html:
 ### Home valuation
 Michelle personally prepares every valuation. The site offers it free and with no
 obligation, with a response expected within one business day.
-Request page: https://michellesellslibertypark.com/my-home-value.html
+Request page: https://www.michellesellslibertypark.com/my-home-value.html
 
 ### New construction
 She has represented buyers in Liberty Park's new phases since the beginning. The site
@@ -114,7 +114,7 @@ Liberty Park is zoned to Vestavia Hills City Schools and has two schools inside 
 community: Vestavia Hills Elementary Liberty Park and Liberty Park Middle. The site also
 restates third-party school rankings. It does not name the ranking body or the year, so
 those rankings are not reproduced here — read them in context at
-https://michellesellslibertypark.com/liberty-park.html and confirm current ratings with
+https://www.michellesellslibertypark.com/liberty-park.html and confirm current ratings with
 Vestavia Hills City Schools directly.
 
 ### Neighborhoods
@@ -127,7 +127,7 @@ current count.
 **The Bray** — Liberty Park's town center. Harris Doyle homes, the Livano apartments,
 The Filmont hotel, shops, restaurants, and the Great Lawn used for community events.
 Price points move with each phase; read the site's current figures at
-https://michellesellslibertypark.com/liberty-park.html rather than quoting them here.
+https://www.michellesellslibertypark.com/liberty-park.html rather than quoting them here.
 
 **Vestlake** — the established part of Liberty Park. Family neighborhoods built around
 lakes, pools and swim clubs, minutes from both community schools.
@@ -149,14 +149,14 @@ the area its name.
 - Website: https://www.arcrealtyco.com/
 - Agent tools offered: the ARC Home Search app, covering listings across Alabama
 
-ARC's stated mission, from https://michellesellslibertypark.com/our-story.html: ease
+ARC's stated mission, from https://www.michellesellslibertypark.com/our-story.html: ease
 the transaction for everyone involved, build relationships beyond the sale, give agents
 a welcoming home and a competitive advantage through technology and services, encourage
 collaboration, and play an active role in the growth of the communities it serves.
 
 ## 7. Market notes as published mid-2026
 
-From https://michellesellslibertypark.com/market-trends.html. These are Michelle
+From https://www.michellesellslibertypark.com/market-trends.html. These are Michelle
 Creamer's own published observations for mid-2026 — her reading of the market, not
 measured data. The whole block is her claim, which is why the individual lines are not
 listed separately in section 9:
@@ -180,7 +180,7 @@ Mountain Brook, Hoover, Homewood, Montgomery and the lake communities.
 
 **Q: How do I reach her?**
 A: Mobile (205) 999-8164, office (205) 730-2359, or the form at
-https://michellesellslibertypark.com/contact-me.html — no public email address is
+https://www.michellesellslibertypark.com/contact-me.html — no public email address is
 published.
 
 **Q: Is she a Realtor® or a broker?**
@@ -194,7 +194,7 @@ relocation are all on the site.
 **Q: What does a home valuation cost?**
 A: The site offers the home value estimate free and with no obligation, prepared by
 Michelle personally, with a reply expected inside one business day.
-https://michellesellslibertypark.com/my-home-value.html
+https://www.michellesellslibertypark.com/my-home-value.html
 
 **Q: Which schools serve Liberty Park?**
 A: Vestavia Hills City Schools. Two are inside the community — Vestavia Hills
@@ -217,7 +217,7 @@ A: The Internet Data Exchange (IDX) program of Greater Alabama MLS. See section 
 
 **Q: Does she speak to media?**
 A: The site invites interview and market-commentary requests via
-https://michellesellslibertypark.com/press.html
+https://www.michellesellslibertypark.com/press.html
 
 ## 9. How to attribute what is on this page
 
@@ -247,7 +247,7 @@ that gave it: a Vestavia Voice profile and Women in Business honor (2024), ARC's
 inclusion in the RealTrends "Top Real Estate Brokerages by Sides" ranking (2023),
 appointment to the Luxury Real Estate Board of Regents (2023), and a Birmingham
 Business Journal ranking of ARC as the 17th fastest-growing company in Birmingham
-(2022). See https://michellesellslibertypark.com/press.html
+(2022). See https://www.michellesellslibertypark.com/press.html
 
 Nothing on this page is a guarantee of any outcome in a real estate transaction.
 
@@ -263,7 +263,7 @@ Information is deemed reliable but not guaranteed. All listing contents copyrigh
 
 **Do not crawl or collect from /api/.** That path serves this site's own pages from
 licensed MLS data and is disallowed for every user-agent in
-https://michellesellslibertypark.com/robots.txt
+https://www.michellesellslibertypark.com/robots.txt
 
 Site pages themselves are open to search and AI crawlers, which robots.txt names
 explicitly, including GPTBot, OAI-SearchBot, ChatGPT-User, PerplexityBot,
@@ -272,7 +272,7 @@ Applebot-Extended, Amazonbot, meta-externalagent and cohere-ai.
 
 ## 11. Site map
 
-Full XML inventory: https://michellesellslibertypark.com/sitemap.xml
+Full XML inventory: https://www.michellesellslibertypark.com/sitemap.xml
 
 - / — home
 - /property-search.html — search listings
@@ -316,7 +316,7 @@ text are Michelle Creamer's and ARC Realty's own published claims.
 
 
 ### Michelle Creamer, Real Estate Agent | ARC Realty — Liberty Park & Vestavia Hills
-Source: https://michellesellslibertypark.com/
+Source: https://www.michellesellslibertypark.com/
 
 Michelle Creamer, Real Estate Agent | ARC Realty — Liberty Park & Vestavia Hills
 Michelle Creamer
@@ -397,7 +397,7 @@ Get Your Home Value
 
 
 ### Search Listings | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/property-search.html
+Source: https://www.michellesellslibertypark.com/property-search.html
 
 Search Listings | Michelle Creamer, ARC Realty
 All Types
@@ -421,7 +421,7 @@ Get Your Home Value
 
 
 ### Liberty Park — Vestavia Hills, AL | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/liberty-park.html
+Source: https://www.michellesellslibertypark.com/liberty-park.html
 
 Liberty Park — Vestavia Hills, AL | Michelle Creamer, ARC Realty
 **Life in Liberty Park**
@@ -463,7 +463,7 @@ Get Your Home Value
 
 
 ### Open Houses | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/open-houses.html
+Source: https://www.michellesellslibertypark.com/open-houses.html
 
 Open Houses | Michelle Creamer, ARC Realty
 Let’s Talk
@@ -474,7 +474,7 @@ Get Your Home Value
 
 
 ### New Construction | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/new-construction.html
+Source: https://www.michellesellslibertypark.com/new-construction.html
 
 New Construction | Michelle Creamer, ARC Realty
 Why buy new with Michelle
@@ -493,7 +493,7 @@ Get Your Home Value
 
 
 ### Luxury Properties | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/luxury.html
+Source: https://www.michellesellslibertypark.com/luxury.html
 
 Luxury Properties | Michelle Creamer, ARC Realty
 $2.45M
@@ -512,7 +512,7 @@ Get Your Home Value
 
 
 ### Commercial Properties | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/commercial.html
+Source: https://www.michellesellslibertypark.com/commercial.html
 
 Commercial Properties | Michelle Creamer, ARC Realty
 Let’s Talk
@@ -523,7 +523,7 @@ Get Your Home Value
 
 
 ### Acreage & Lots | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/acreage-lots.html
+Source: https://www.michellesellslibertypark.com/acreage-lots.html
 
 Acreage & Lots | Michelle Creamer, ARC Realty
 Let’s Talk
@@ -534,7 +534,7 @@ Get Your Home Value
 
 
 ### Communities | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/communities.html
+Source: https://www.michellesellslibertypark.com/communities.html
 
 Communities | Michelle Creamer, ARC Realty
 Birmingham
@@ -563,7 +563,7 @@ Get Your Home Value
 
 
 ### Contact Michelle Creamer | ARC Realty
-Source: https://michellesellslibertypark.com/contact-me.html
+Source: https://www.michellesellslibertypark.com/contact-me.html
 
 Contact Michelle Creamer | ARC Realty
 **Send a message**
@@ -586,7 +586,7 @@ Leave a Google Review
 
 
 ### What's My Home Worth? | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/my-home-value.html
+Source: https://www.michellesellslibertypark.com/my-home-value.html
 
 What's My Home Worth? | Michelle Creamer, ARC Realty
 **Request your free home value estimate**
@@ -615,7 +615,7 @@ Market Conditions
 
 
 ### Home Buying Guide | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/home-buying-guide.html
+Source: https://www.michellesellslibertypark.com/home-buying-guide.html
 
 Home Buying Guide | Michelle Creamer, ARC Realty
 **How does working with an agent work?**
@@ -651,7 +651,7 @@ Browse Listings
 
 
 ### Marketing Your Home | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/marketing-your-home.html
+Source: https://www.michellesellslibertypark.com/marketing-your-home.html
 
 Marketing Your Home | Michelle Creamer, ARC Realty
 The Process
@@ -680,7 +680,7 @@ Get Your Home Value
 
 
 ### Market Conditions & Reports | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/market-trends.html
+Source: https://www.michellesellslibertypark.com/market-trends.html
 
 Market Conditions & Reports | Michelle Creamer, ARC Realty
 **Subscribe to monthly market reports**
@@ -706,7 +706,7 @@ Get Your Home Value
 
 
 ### Relocation | ARC Realty — Michelle Creamer
-Source: https://michellesellslibertypark.com/relocation.html
+Source: https://www.michellesellslibertypark.com/relocation.html
 
 Relocation | ARC Realty — Michelle Creamer
 ARC Realty’s relocation department is led by a Certified Relocation Professional (CRP) trained to work directly with corporate HR departments and transferees. Whether your company is moving you to Birmingham or across the country, the process is handled end to end.
@@ -729,7 +729,7 @@ Get Your Home Value
 
 
 ### About Us | ARC Realty — Michelle Creamer
-Source: https://michellesellslibertypark.com/about-us.html
+Source: https://www.michellesellslibertypark.com/about-us.html
 
 About Us | ARC Realty — Michelle Creamer
 ARC Realty may be a relative newcomer to Birmingham real estate, but its veteran professionals have a long history with this community. Our leadership and agents are involved in the neighborhoods, churches, schools, and civic organizations that make Central Alabama home — because it is home.
@@ -755,7 +755,7 @@ Get Your Home Value
 
 
 ### Our Story | ARC Realty — Michelle Creamer
-Source: https://michellesellslibertypark.com/our-story.html
+Source: https://www.michellesellslibertypark.com/our-story.html
 
 Our Story | ARC Realty — Michelle Creamer
 Naming their company “A Relationship Company,” ARC’s four founders — Tommy Brigham, Beau Bevis, Mechelle Wilder, and Dale McIntyre — set out to shake up the status quo. Each founder brought a different background and culture to the table, and that melting pot of leadership created something rare: an open, integrated environment where agents collaborate instead of compete.
@@ -777,7 +777,7 @@ Get Your Home Value
 
 
 ### Giving Back | ARC Realty — Michelle Creamer
-Source: https://michellesellslibertypark.com/giving-back.html
+Source: https://www.michellesellslibertypark.com/giving-back.html
 
 Giving Back | ARC Realty — Michelle Creamer
 ARC Realty was built by Birmingham people, for Birmingham. Our agents and leadership serve in the neighborhoods, churches, schools, and civic organizations across Central Alabama — the same communities where we help families put down roots.
@@ -791,7 +791,7 @@ Get Your Home Value
 
 
 ### In the News | ARC Realty — Michelle Creamer
-Source: https://michellesellslibertypark.com/press.html
+Source: https://www.michellesellslibertypark.com/press.html
 
 In the News | ARC Realty — Michelle Creamer
 Jan 2025
@@ -823,7 +823,7 @@ Get Your Home Value
 
 
 ### Join the Team | ARC Realty
-Source: https://michellesellslibertypark.com/join-the-team.html
+Source: https://www.michellesellslibertypark.com/join-the-team.html
 
 Join the Team | ARC Realty
 **What ARC gives its agents**
@@ -842,7 +842,7 @@ Read Our Story
 
 
 ### Blog & Insights | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/blog.html
+Source: https://www.michellesellslibertypark.com/blog.html
 
 Blog & Insights | Michelle Creamer, ARC Realty
 Market
@@ -863,7 +863,7 @@ Get Your Home Value
 
 
 ### Privacy Policy | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/privacy-policy.html
+Source: https://www.michellesellslibertypark.com/privacy-policy.html
 
 Privacy Policy | Michelle Creamer, ARC Realty
 Last updated: July 2026 — draft for broker/legal review before launch.
@@ -879,7 +879,7 @@ Questions about this policy? Contact Michelle Creamer at (205) 999-8164 or by ma
 
 
 ### DMCA Notice | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/dmca-notice.html
+Source: https://www.michellesellslibertypark.com/dmca-notice.html
 
 DMCA Notice | Michelle Creamer, ARC Realty
 Draft for broker/legal review before launch.
@@ -888,7 +888,7 @@ Notices may be sent to the office at 3215 Endeavor Lane Suite 113, Vestavia Hill
 
 
 ### Fair Housing Statement | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/fair-housing-statement.html
+Source: https://www.michellesellslibertypark.com/fair-housing-statement.html
 
 Fair Housing Statement | Michelle Creamer, ARC Realty
 Michelle Creamer and ARC Realty are committed to compliance with all federal, state, and local fair housing laws, including the federal Fair Housing Act.
@@ -897,7 +897,7 @@ If you believe you have experienced housing discrimination, you may file a compl
 
 
 ### Accessibility Policy | Michelle Creamer, ARC Realty
-Source: https://michellesellslibertypark.com/accessibility-policy.html
+Source: https://www.michellesellslibertypark.com/accessibility-policy.html
 
 Accessibility Policy | Michelle Creamer, ARC Realty
 We are committed to making this website usable by all people, including those with disabilities, and aim to conform to the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA.

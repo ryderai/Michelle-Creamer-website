@@ -56,7 +56,7 @@ All six internal documents now return **404** on the live site, each fetched ind
 
 ## The www question: SETTLED
 
-`curl -I https://michellesellslibertypark.com/` returned:
+`curl -I https://www.michellesellslibertypark.com/` returned:
 
 ```
 HTTP/2 308

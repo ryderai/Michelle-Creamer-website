@@ -155,5 +155,5 @@ change today). `robots.txt` gained a comment describing the mirrors.
 4. Fetch a few `.md` mirrors and confirm `text/markdown` and the canonical `Link` header.
 5. Re-run AI Access on the platform. Before: 82/100, structured data 38, AI intent 42,
    identity 55, page content quality 76.
-6. `curl -I https://michellesellslibertypark.com/` and settle the www-vs-apex question that
+6. `curl -I https://www.michellesellslibertypark.com/` and settle the www-vs-apex question that
    `GEO-RESCAN-2026-08-25.md` left open.

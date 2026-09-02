@@ -1,10 +1,10 @@
 ---
 title: What's My Home Worth? | Michelle Creamer, ARC Realty
 description: Find the estimated value of your Liberty Park or Vestavia Hills home for free with Michelle Creamer, ARC Realty.
-source: https://michellesellslibertypark.com/my-home-value.html
+source: https://www.michellesellslibertypark.com/my-home-value.html
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/my-home-value.html
+canonical: https://www.michellesellslibertypark.com/my-home-value.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

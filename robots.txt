@@ -64,14 +64,14 @@ User-agent: cohere-ai
 Allow: /
 Disallow: /api/
 
-Sitemap: https://michellesellslibertypark.com/sitemap.xml
+Sitemap: https://www.michellesellslibertypark.com/sitemap.xml
 
 # AI-readable summaries of this site (added 2026-08-19)
-# llms.txt      https://michellesellslibertypark.com/llms.txt
-# llms-full.txt https://michellesellslibertypark.com/llms-full.txt
-# agents.md     https://michellesellslibertypark.com/agents.md
+# llms.txt      https://www.michellesellslibertypark.com/llms.txt
+# llms-full.txt https://www.michellesellslibertypark.com/llms-full.txt
+# agents.md     https://www.michellesellslibertypark.com/agents.md
 #
 # Markdown mirror of every page (added 2026-08-25). Each HTML page links to its
 # own mirror with <link rel="alternate" type="text/markdown">. Example:
-# https://michellesellslibertypark.com/liberty-park.html -> /liberty-park.md
+# https://www.michellesellslibertypark.com/liberty-park.html -> /liberty-park.md
 # The HTML page is canonical; the mirror is a plain-text copy for AI readers.

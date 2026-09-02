@@ -50,7 +50,7 @@
       "headers": [
         {
           "key": "Link",
-          "value": "<https://michellesellslibertypark.com/:slug.html>; rel=\"canonical\""
+          "value": "<https://www.michellesellslibertypark.com/:slug.html>; rel=\"canonical\""
         },
         {
           "key": "Content-Type",

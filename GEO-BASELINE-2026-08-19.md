@@ -6,7 +6,7 @@ against this file. Numbers here were read on **2026-08-19**.
 GEO = Generative Engine Optimization: getting a business found, trusted and quoted by
 AI search engines (ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot).
 
-- Site: https://michellesellslibertypark.com/ (live host serves the `www.` version)
+- Site: https://www.michellesellslibertypark.com/ (live host serves the `www.` version)
 - Client folder: `AI-Syndicate/Michelle-Creamer/`
 - Repo commit at the time of this audit: `1bf6cbc`
 
@@ -118,7 +118,7 @@ rewrites, no markdown twins — those are Weeks 2 and beyond.
 
 ## 6. How to re-measure later
 
-1. Fetch `https://michellesellslibertypark.com/llms.txt`, `/llms-full.txt` and
+1. Fetch `https://www.michellesellslibertypark.com/llms.txt`, `/llms-full.txt` and
    `/agents.md`. All three must return 200. On 2026-08-19 all three returned 404.
 2. Re-run the AI Access audit in AI Syndicate for `michellesellslibertypark.com`.
 3. Compare the new score to **74**. Write the new number and its date in a new file —

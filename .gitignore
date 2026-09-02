@@ -1,1 +1,5 @@
 .DS_Store
+
+# Internal session prompt — must never ship to the live site (any .md at root is publicly served
+# unless it is listed in vercel.json rewrites). Added 2026-09-01.
+PROMPT-for-new-chat-week3-4.md

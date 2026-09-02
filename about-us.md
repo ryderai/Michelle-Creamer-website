@@ -1,10 +1,10 @@
 ---
 title: About ARC Realty | Michelle Creamer, Vestavia Hills AL
 description: ARC Realty is Alabama's largest privately owned brokerage, founded in Birmingham in 2012. Michelle Creamer is its agent for Liberty Park and Vestavia Hills.
-source: https://michellesellslibertypark.com/about-us.html
+source: https://www.michellesellslibertypark.com/about-us.html
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/about-us.html
+canonical: https://www.michellesellslibertypark.com/about-us.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

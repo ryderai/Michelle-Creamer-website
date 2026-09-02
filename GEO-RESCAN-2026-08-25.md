@@ -150,13 +150,13 @@ is clean; there is no firewall in front of this site the way there is on justind
   `www.michellesellslibertypark.com`, path preserved.
 - MEASURED HERE: `performance.getEntriesByType("navigation")[0].redirectCount` reads **0**
   (expected for a cross-origin redirect without `Timing-Allow-Origin`, so inconclusive).
-- MEASURED HERE: WebFetch retrieved `https://michellesellslibertypark.com/liberty-park.html`
+- MEASURED HERE: WebFetch retrieved `https://www.michellesellslibertypark.com/liberty-park.html`
   and reported **no redirect**, returning real page content from the apex.
 
 **So: it is NOT established that the apex redirects to www.** Both hosts appear to answer.
 Either way there is a real ambiguity worth closing, but the earlier Aug-19 note's framing
 ("the canonical points at a redirect") is not proven and should not be repeated until
-someone runs `curl -I https://michellesellslibertypark.com/` from Cursor and reads the
+someone runs `curl -I https://www.michellesellslibertypark.com/` from Cursor and reads the
 status line and `Location` header. One command settles it.
 
 ## 8. Content-side observations — MEASURED HERE

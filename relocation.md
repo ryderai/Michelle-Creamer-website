@@ -1,10 +1,10 @@
 ---
 title: Relocation | ARC Realty — Michelle Creamer
 description: Relocating to Birmingham or Vestavia Hills? ARC Realty's certified relocation team and Michelle Creamer help you plan the move.
-source: https://michellesellslibertypark.com/relocation.html
+source: https://www.michellesellslibertypark.com/relocation.html
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/relocation.html
+canonical: https://www.michellesellslibertypark.com/relocation.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

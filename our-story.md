@@ -1,10 +1,10 @@
 ---
 title: Our Story | ARC Realty — Michelle Creamer
 description: ARC Realty was founded in Birmingham in 2012 as 'A Relationship Company' — now Alabama's largest privately owned brokerage, and Michelle Creamer's firm.
-source: https://michellesellslibertypark.com/our-story.html
+source: https://www.michellesellslibertypark.com/our-story.html
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/our-story.html
+canonical: https://www.michellesellslibertypark.com/our-story.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

@@ -1,10 +1,10 @@
 ---
 title: Market Conditions & Reports | Michelle Creamer, ARC Realty
 description: Monthly real estate market reports for Birmingham, Vestavia Hills, and Liberty Park from Michelle Creamer, ARC Realty.
-source: https://michellesellslibertypark.com/market-trends.html
+source: https://www.michellesellslibertypark.com/market-trends.html
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/market-trends.html
+canonical: https://www.michellesellslibertypark.com/market-trends.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

@@ -1,10 +1,10 @@
 ---
 title: Blog & Insights | Michelle Creamer, ARC Realty
 description: Market insights, buying and selling guides, and Liberty Park news from Michelle Creamer, ARC Realty.
-source: https://michellesellslibertypark.com/blog.html
+source: https://www.michellesellslibertypark.com/blog.html
 site: Michelle Creamer, Realtor - ARC Realty
 generated: 2026-08-25
-canonical: https://michellesellslibertypark.com/blog.html
+canonical: https://www.michellesellslibertypark.com/blog.html
 note: Markdown mirror of the HTML page above, for AI readers. The HTML page is canonical.
   Third-party school rankings and buyer-compensation cost statements that appear on the HTML
   page are deliberately not restated here, because the source does not name a ranking body,

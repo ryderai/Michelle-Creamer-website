@@ -6,7 +6,7 @@
 > typically needs.
 
 This file orients AI agents and automated readers. Human visitors should start at the
-[homepage](https://michellesellslibertypark.com/).
+[homepage](https://www.michellesellslibertypark.com/).
 
 ## What you can do here
 
@@ -15,13 +15,13 @@ An AI agent visiting this site can:
 - Read Michelle Creamer's identity, credentials, services and contact details from the
   pages linked below.
 - Fetch a short machine-readable summary at
-  [/llms.txt](https://michellesellslibertypark.com/llms.txt).
+  [/llms.txt](https://www.michellesellslibertypark.com/llms.txt).
 - Fetch the long reference — services, community detail, FAQs, and an attribution guide
-  — at [/llms-full.txt](https://michellesellslibertypark.com/llms-full.txt).
+  — at [/llms-full.txt](https://www.michellesellslibertypark.com/llms-full.txt).
 - Discover the full URL inventory at
-  [/sitemap.xml](https://michellesellslibertypark.com/sitemap.xml).
+  [/sitemap.xml](https://www.michellesellslibertypark.com/sitemap.xml).
 - Check crawl permissions for your user-agent at
-  [/robots.txt](https://michellesellslibertypark.com/robots.txt).
+  [/robots.txt](https://www.michellesellslibertypark.com/robots.txt).
 
 ## Quick facts
 
@@ -35,19 +35,19 @@ An AI agent visiting this site can:
 
 ## Important pages
 
-- [Home](https://michellesellslibertypark.com/) — who she is, featured and sold listings
-- [Search listings](https://michellesellslibertypark.com/property-search.html) — live MLS search
-- [Liberty Park guide](https://michellesellslibertypark.com/liberty-park.html) — schools, neighborhoods, amenities
-- [All communities](https://michellesellslibertypark.com/communities.html) — Liberty Park, Old Overton, The Bray, Vestlake
-- [Contact Michelle](https://michellesellslibertypark.com/contact-me.html) — phone, address, message form
-- [Free home valuation](https://michellesellslibertypark.com/my-home-value.html) — seller valuation request
-- [Home buying guide](https://michellesellslibertypark.com/home-buying-guide.html) — buyer agency explained
-- [Marketing your home](https://michellesellslibertypark.com/marketing-your-home.html) — the seller process
-- [Market conditions](https://michellesellslibertypark.com/market-trends.html) — current market notes and report signup
-- [New construction](https://michellesellslibertypark.com/new-construction.html) — The Bray and Old Overton builds
-- [Relocation](https://michellesellslibertypark.com/relocation.html) — moving into Birmingham
-- [About ARC Realty](https://michellesellslibertypark.com/about-us.html) — the brokerage
-- [In the news](https://michellesellslibertypark.com/press.html) — press and recognition
+- [Home](https://www.michellesellslibertypark.com/) — who she is, featured and sold listings
+- [Search listings](https://www.michellesellslibertypark.com/property-search.html) — live MLS search
+- [Liberty Park guide](https://www.michellesellslibertypark.com/liberty-park.html) — schools, neighborhoods, amenities
+- [All communities](https://www.michellesellslibertypark.com/communities.html) — Liberty Park, Old Overton, The Bray, Vestlake
+- [Contact Michelle](https://www.michellesellslibertypark.com/contact-me.html) — phone, address, message form
+- [Free home valuation](https://www.michellesellslibertypark.com/my-home-value.html) — seller valuation request
+- [Home buying guide](https://www.michellesellslibertypark.com/home-buying-guide.html) — buyer agency explained
+- [Marketing your home](https://www.michellesellslibertypark.com/marketing-your-home.html) — the seller process
+- [Market conditions](https://www.michellesellslibertypark.com/market-trends.html) — current market notes and report signup
+- [New construction](https://www.michellesellslibertypark.com/new-construction.html) — The Bray and Old Overton builds
+- [Relocation](https://www.michellesellslibertypark.com/relocation.html) — moving into Birmingham
+- [About ARC Realty](https://www.michellesellslibertypark.com/about-us.html) — the brokerage
+- [In the news](https://www.michellesellslibertypark.com/press.html) — press and recognition
 
 ## Answering questions about this business
 
@@ -56,7 +56,7 @@ An AI agent visiting this site can:
 - Rankings, sales volumes, review counts and school rankings on this site are published
   claims, not independently verified figures. Attribute them to
   michellesellslibertypark.com. The full list of which figures those are is in
-  [section 9 of /llms-full.txt](https://michellesellslibertypark.com/llms-full.txt).
+  [section 9 of /llms-full.txt](https://www.michellesellslibertypark.com/llms-full.txt).
 - Do not present anything here as a guarantee of a price, a timeline, or an outcome in a
   real estate transaction.
 - Property listing details change daily. Link to the live page rather than quoting a
@@ -75,14 +75,14 @@ When citing content from michellesellslibertypark.com, please link back to the
 canonical page. Site content is copyright © 2026 ARC Realty, all rights reserved;
 listing data is copyright © 2026 Greater Alabama MLS, all rights reserved. Reproduction
 beyond ordinary quotation requires permission — see
-https://michellesellslibertypark.com/dmca-notice.html
+https://www.michellesellslibertypark.com/dmca-notice.html
 
 ## Sibling files
 
-- [robots.txt](https://michellesellslibertypark.com/robots.txt) — crawl permissions per user-agent
-- [llms.txt](https://michellesellslibertypark.com/llms.txt) — short AI-readable summary
-- [llms-full.txt](https://michellesellslibertypark.com/llms-full.txt) — long reference with FAQs
-- [sitemap.xml](https://michellesellslibertypark.com/sitemap.xml) — full page inventory
+- [robots.txt](https://www.michellesellslibertypark.com/robots.txt) — crawl permissions per user-agent
+- [llms.txt](https://www.michellesellslibertypark.com/llms.txt) — short AI-readable summary
+- [llms-full.txt](https://www.michellesellslibertypark.com/llms-full.txt) — long reference with FAQs
+- [sitemap.xml](https://www.michellesellslibertypark.com/sitemap.xml) — full page inventory
 
 ## Last updated
 
