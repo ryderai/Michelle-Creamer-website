@@ -1,0 +1,380 @@
+<title>Listing Loader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ---- page chrome: theme-aware ---- */
+:root{
+  --bg:#f5f4f1; --panel:#ffffff; --edge:#e3e1dc;
+  --ink:#141a22; --soft:#616a77; --faint:#8b939e;
+  --brass:#9a7b3f; --brass-lift:#c9ab72;
+  --code-bg:#f0efeb;
+  --sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:Fraunces,Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --panel:#1c1f25; --edge:#2e333b;
+    --ink:#eceef1; --soft:#a4acb8; --faint:#79818d;
+    --brass:#cdae74; --brass-lift:#e0c894;
+    --code-bg:#23272e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f25; --edge:#2e333b;
+  --ink:#eceef1; --soft:#a4acb8; --faint:#79818d;
+  --brass:#cdae74; --brass-lift:#e0c894;
+  --code-bg:#23272e;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.6 var(--sans); padding-block:clamp(28px,5vw,52px);
+}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+.eyebrow{
+  font:600 11.5px/1 var(--sans); letter-spacing:.16em; text-transform:uppercase;
+  color:var(--brass); margin:0 0 14px;
+}
+h1{
+  font-family:var(--serif); font-weight:600; font-size:clamp(30px,5.2vw,46px);
+  line-height:1.08; margin:0 0 14px; text-wrap:balance; letter-spacing:-.015em;
+}
+.lede{margin:0 0 34px;color:var(--soft);max-width:62ch;font-size:17px}
+.lede b{color:var(--ink);font-weight:600}
+
+h2{font-family:var(--serif);font-weight:600;font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+.panel{
+  background:var(--panel); border:1px solid var(--edge);
+  border-radius:14px; padding:clamp(18px,2.6vw,26px); margin-bottom:22px;
+}
+.panel > p.note{margin:0 0 20px;color:var(--soft);font-size:14.5px;max-width:64ch}
+
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.ctl{
+  font:500 14.5px var(--sans); cursor:pointer; padding:10px 17px; border-radius:999px;
+  border:1px solid var(--edge); background:transparent; color:var(--ink);
+  transition:background .18s ease,border-color .18s ease,color .18s ease;
+}
+.ctl:hover{border-color:var(--brass);color:var(--brass)}
+.ctl:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.ctl.primary{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+.ctl.primary:hover{background:var(--brass);border-color:var(--brass);color:#fff}
+
+/* The stage reproduces the real site, which is light-only. It keeps its own
+   colours in both themes on purpose — otherwise the preview would be showing
+   you something the live site never does. */
+.stage{
+  --white:#fff; --line:#e6e9ef; --ink:#101a2b; --text-soft:#6b7688;
+  --radius-lg:16px;
+  --shadow-sm:0 1px 2px rgba(16,26,43,.06),0 4px 14px rgba(16,26,43,.05);
+  --ease:cubic-bezier(.4,0,.2,1); --brass:#ac8c50; --brass-soft:#c9ab72;
+  --font-display:Fraunces,Georgia,serif;
+  background:#faf8f5; color:#101a2b;
+  border:1px solid var(--edge); border-radius:12px;
+  padding:clamp(16px,2.4vw,24px);
+  font-family:var(--sans);
+}
+.stage-tag{
+  display:flex;align-items:center;gap:8px;
+  font:600 10.5px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;
+  color:#8a94a4;margin-bottom:14px;
+}
+.stage-tag::after{content:"";flex:1;height:1px;background:#e6e9ef}
+
+.listing-toolbar{
+  display:flex;gap:12px;align-items:center;background:#fff;
+  border:1px solid #e6e9ef;border-radius:13px;padding:13px 15px;flex-wrap:wrap;
+}
+.listing-toolbar input,.listing-toolbar select{
+  font:15px var(--sans);padding:10px 12px;border:1px solid #e6e9ef;
+  border-radius:9px;background:#fff;color:#101a2b;
+}
+.listing-toolbar input{flex:1;min-width:190px}
+.results-count{font-size:13px;color:#6b7688;margin-left:auto;padding-right:4px}
+
+.listing-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:clamp(18px,2.2vw,26px);margin-top:20px;
+}
+.listing-card{
+  background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e6e9ef;
+  box-shadow:0 1px 2px rgba(16,26,43,.06),0 4px 14px rgba(16,26,43,.05);
+  display:flex;flex-direction:column;
+}
+.lc-media{
+  aspect-ratio:16/10.6;background:linear-gradient(135deg,#1b3355,#0b1524);
+  display:grid;place-items:center;color:rgba(255,255,255,.42);
+  font:500 11.5px var(--sans);letter-spacing:.12em;
+}
+.lc-body{padding:20px 22px 22px;display:flex;flex-direction:column;gap:10px;flex:1}
+.lc-price{font-family:var(--font-display);font-size:26px;font-weight:560;color:#101a2b}
+.lc-address{font-size:15px;font-weight:600;color:#101a2b;line-height:1.4}
+.lc-address .city{display:block;font-size:13px;font-weight:500;color:#6b7688;margin-top:2px}
+.lc-specs{display:flex;gap:18px;padding-top:12px;border-top:1px solid #e6e9ef;font-size:13.5px;color:#6b7688}
+.lc-specs b{color:#101a2b;font-weight:650}
+
+/* states table */
+.states{display:grid;gap:0;margin:0}
+.state-row{
+  display:grid;grid-template-columns:104px 1fr;gap:18px;align-items:baseline;
+  padding:14px 0;border-top:1px solid var(--edge);
+}
+.state-row:first-child{border-top:0}
+.state-row dt{
+  font:500 13px var(--mono);color:var(--brass);
+  font-variant-numeric:tabular-nums;
+}
+.state-row dd{margin:0;color:var(--soft);font-size:14.5px}
+.state-row dd b{color:var(--ink);font-weight:600}
+@media (max-width:560px){
+  .state-row{grid-template-columns:1fr;gap:4px}
+}
+[hidden]{display:none!important}
+</style>
+
+<style>
+/* ===== Below this line is the exact CSS that ships on the live site ===== */
+@keyframes lc-shimmer {
+  from { background-position: 130% 0; }
+/* ============================================================
+   WAITING FOR THE MLS
+   Greater Alabama MLS answers a search in anywhere from one to
+   twelve seconds, and the old behaviour was an empty white
+   grid for the whole of it — which reads as "broken", not
+   "loading". So the page draws the shape of the answer while
+   it waits: cards the same size as real ones, a moving bar,
+   and a line of text that says what is happening.
+   Added 2026-09-14.
+   ============================================================ */
+
+.lc-skeleton {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Matches .lc-media exactly so nothing shifts when the real card
+   replaces it — a layout jump undoes the calm the skeleton buys. */
+.sk-media {
+  aspect-ratio: 16 / 10.6;
+  background: linear-gradient(135deg, #e9edf3, #dfe5ee);
+  position: relative;
+  overflow: hidden;
+}
+.sk-body { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.sk-line { height: 12px; border-radius: 6px; background: #e6eaf1; position: relative; overflow: hidden; }
+.sk-line.price { height: 26px; width: 48%; border-radius: 7px; }
+.sk-line.addr  { width: 82%; }
+.sk-line.city  { width: 56%; height: 10px; }
+.sk-specs { display: flex; gap: 18px; padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--line); }
+.sk-specs .sk-line { width: 58px; height: 10px; }
+
+/* One shared sheen so every skeleton pulses in step rather than
+   flickering out of phase, which looks like noise. */
+.sk-media::after,
+.sk-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, .85) 46%,
+    rgba(255, 255, 255, 0) 72%);
+  background-size: 260% 100%;
+  animation: lc-shimmer 1.45s linear infinite;
+}
+.sk-media::after {
+  background: linear-gradient(100deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, .55) 46%,
+    rgba(255, 255, 255, 0) 72%);
+  background-size: 260% 100%;
+}
+
+/* A thin indeterminate bar under the search toolbar. It never
+   pretends to know a percentage, because we do not. */
+.search-progress {
+  height: 3px;
+  margin: -2px 0 0;
+  border-radius: 2px;
+  background: rgba(17, 32, 56, .07);
+  overflow: hidden;
+  position: relative;
+}
+.search-progress::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 38%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--brass-soft, #c9ab72), var(--brass, #ac8c50));
+  animation: mc-progress 1.15s var(--ease, cubic-bezier(.4, 0, .2, 1)) infinite;
+}
+@keyframes mc-progress {
+  from { left: -40%; }
+  to   { left: 102%; }
+}
+
+.results-count.searching { color: var(--brass, #ac8c50); font-weight: 600; }
+
+/* Said out loud only once the wait stops being normal, so it
+   reassures instead of alarming. */
+.search-slow {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  color: var(--text-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-media::after, .sk-line::after { animation: none; opacity: .5; }
+  .search-progress::after { animation: none; left: 0; width: 100%; opacity: .45; }
+}
+
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Michelle Creamer &middot; property search</p>
+  <h1>What the page shows while the MLS thinks</h1>
+  <p class="lede">Greater Alabama MLS answers a search in anywhere from <b>one to twelve seconds</b>.
+  Until now the grid sat empty for all of it, which reads as broken rather than busy. This is the
+  replacement, running at real speed &mdash; the skeleton cards, the bar and the copy below are the
+  same code that ships.</p>
+
+  <div class="panel">
+    <h2>Try it</h2>
+    <p class="note">Eight seconds is a normal search. Thirteen is a bad day on the MLS &mdash; run that
+    one to see the reassurance line arrive at four seconds and change at ten.</p>
+
+    <div class="controls">
+      <button class="ctl primary" id="go" type="button">Run a search &middot; 8s</button>
+      <button class="ctl" id="goSlow" type="button">Run a slow one &middot; 13s</button>
+      <button class="ctl" id="stop" type="button">Skip to results</button>
+    </div>
+
+    <div class="stage">
+      <p class="stage-tag">Live site &mdash; property-search.html</p>
+      <div class="listing-toolbar">
+        <input id="q" value="Boulder Lake" aria-label="Search by address, city, zip or MLS number">
+        <select aria-label="Property type"><option>All Types</option></select>
+        <select aria-label="Sort"><option>Newest</option></select>
+        <span class="results-count" id="count">3 properties</span>
+      </div>
+      <div class="search-progress" id="bar" hidden></div>
+      <p class="search-slow" id="slow" role="status" aria-live="polite" hidden></p>
+      <div class="listing-grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>What happens, and when</h2>
+    <p class="note">Nothing here claims a percentage, because the MLS never tells us one.
+    The page says what it is doing and stops talking once it can show the answer.</p>
+    <dl class="states">
+      <div class="state-row">
+        <dt>0.0s</dt>
+        <dd>Six <b>skeleton cards</b> appear, sized to the real ones so nothing jumps when results
+        land. A thin brass bar moves under the toolbar, and the counter reads
+        <b>&ldquo;Searching the MLS&hellip;&rdquo;</b>.</dd>
+      </div>
+      <div class="state-row">
+        <dt>4.0s</dt>
+        <dd>A quiet line appears: <b>&ldquo;Still searching &mdash; the MLS is taking a moment.&rdquo;</b>
+        Early enough to reassure, late enough that a normal search never triggers it.</dd>
+      </div>
+      <div class="state-row">
+        <dt>10.0s</dt>
+        <dd>The line changes to name the cause: <b>Greater Alabama MLS can be slow at busy times
+        &mdash; this will finish.</b> A visitor who knows why will wait; one staring at nothing leaves.</dd>
+      </div>
+      <div class="state-row">
+        <dt>on&nbsp;arrival</dt>
+        <dd>Bar, note and skeletons all clear in the same frame the cards render, and the counter
+        switches to the real result count.</dd>
+      </div>
+      <div class="state-row">
+        <dt>reduced&nbsp;motion</dt>
+        <dd>For anyone who has asked their system to limit animation, the shimmer and the travelling
+        bar both stop; the layout and the wording are unchanged.</dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
+<script>
+function skeletonCard() {
+  return (
+    '<div class="lc-skeleton" aria-hidden="true">' +
+      '<div class="sk-media"></div>' +
+      '<div class="sk-body">' +
+        '<div class="sk-line price"></div>' +
+        '<div class="sk-line addr"></div>' +
+        '<div class="sk-line city"></div>' +
+        '<div class="sk-specs">' +
+          '<div class="sk-line"></div><div class="sk-line"></div><div class="sk-line"></div>' +
+        "</div>" +
+      "</div>" +
+    "</div>"
+  );
+}
+
+function showSkeletons(grid, n){
+  const count = Math.max(3, Math.min(n || 6, 12));
+  grid.innerHTML = new Array(count).fill(skeletonCard()).join("");
+}
+
+const card = (price, addr, city, beds, baths, sqft) =>
+  '<article class="listing-card"><div class="lc-media">PHOTO</div><div class="lc-body">' +
+  '<div class="lc-price">' + price + '</div>' +
+  '<div class="lc-address">' + addr + '<span class="city">' + city + '</span></div>' +
+  '<div class="lc-specs"><span><b>' + beds + '</b> Beds</span><span><b>' + baths +
+  '</b> Baths</span><span><b>' + sqft + '</b> SqFt</span></div></div></article>';
+
+const RESULTS =
+  card("$1,100,000","4413 BOULDER LAKE CIRCLE","VESTAVIA HILLS, AL 35242",5,5,"5,200") +
+  card("$824,500","1208 BOULDER LAKE WAY","VESTAVIA HILLS, AL 35242",4,3,"3,640") +
+  card("$739,000","2 BOULDER LAKE COVE","VESTAVIA HILLS, AL 35242",4,3,"3,180");
+
+const grid  = document.getElementById("grid");
+const bar   = document.getElementById("bar");
+const slow  = document.getElementById("slow");
+const count = document.getElementById("count");
+let t1, t2, t3;
+
+function settle(){
+  clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+  bar.hidden = true; slow.hidden = true;
+  count.classList.remove("searching");
+  count.textContent = "3 properties";
+  grid.innerHTML = RESULTS;
+}
+
+function run(ms){
+  clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+  showSkeletons(grid, 6);
+  bar.hidden = false;
+  slow.hidden = true;
+  count.classList.add("searching");
+  count.textContent = "Searching the MLS\u2026";
+  t1 = setTimeout(function(){
+    slow.textContent = "Still searching \u2014 the MLS is taking a moment.";
+    slow.hidden = false;
+  }, 4000);
+  t2 = setTimeout(function(){
+    slow.textContent = "Still searching. Greater Alabama MLS can be slow at busy times \u2014 this will finish.";
+  }, 10000);
+  t3 = setTimeout(settle, ms);
+}
+
+document.getElementById("go").addEventListener("click", function(){ run(8000); });
+document.getElementById("goSlow").addEventListener("click", function(){ run(13000); });
+document.getElementById("stop").addEventListener("click", settle);
+
+settle();
+</script>

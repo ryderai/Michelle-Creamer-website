@@ -1239,3 +1239,101 @@ html.pl-done .hero-stats { transition-delay: .95s; }
 @media (max-width: 560px) {
   .review-cta .btn { width: 100%; justify-content: center; }
 }
+
+/* ============================================================
+   WAITING FOR THE MLS
+   Greater Alabama MLS answers a search in anywhere from one to
+   twelve seconds, and the old behaviour was an empty white
+   grid for the whole of it — which reads as "broken", not
+   "loading". So the page draws the shape of the answer while
+   it waits: cards the same size as real ones, a moving bar,
+   and a line of text that says what is happening.
+   Added 2026-09-14.
+   ============================================================ */
+
+.lc-skeleton {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Matches .lc-media exactly so nothing shifts when the real card
+   replaces it — a layout jump undoes the calm the skeleton buys. */
+.sk-media {
+  aspect-ratio: 16 / 10.6;
+  background: linear-gradient(135deg, #e9edf3, #dfe5ee);
+  position: relative;
+  overflow: hidden;
+}
+.sk-body { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.sk-line { height: 12px; border-radius: 6px; background: #e6eaf1; position: relative; overflow: hidden; }
+.sk-line.price { height: 26px; width: 48%; border-radius: 7px; }
+.sk-line.addr  { width: 82%; }
+.sk-line.city  { width: 56%; height: 10px; }
+.sk-specs { display: flex; gap: 18px; padding-top: 14px; margin-top: 2px; border-top: 1px solid var(--line); }
+.sk-specs .sk-line { width: 58px; height: 10px; }
+
+/* One shared sheen so every skeleton pulses in step rather than
+   flickering out of phase, which looks like noise. */
+.sk-media::after,
+.sk-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, .85) 46%,
+    rgba(255, 255, 255, 0) 72%);
+  background-size: 260% 100%;
+  animation: lc-shimmer 1.45s linear infinite;
+}
+.sk-media::after {
+  background: linear-gradient(100deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, .55) 46%,
+    rgba(255, 255, 255, 0) 72%);
+  background-size: 260% 100%;
+}
+
+/* A thin indeterminate bar under the search toolbar. It never
+   pretends to know a percentage, because we do not. */
+.search-progress {
+  height: 3px;
+  margin: -2px 0 0;
+  border-radius: 2px;
+  background: rgba(17, 32, 56, .07);
+  overflow: hidden;
+  position: relative;
+}
+.search-progress::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 38%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--brass-soft, #c9ab72), var(--brass, #ac8c50));
+  animation: mc-progress 1.15s var(--ease, cubic-bezier(.4, 0, .2, 1)) infinite;
+}
+@keyframes mc-progress {
+  from { left: -40%; }
+  to   { left: 102%; }
+}
+
+.results-count.searching { color: var(--brass, #ac8c50); font-weight: 600; }
+
+/* Said out loud only once the wait stops being normal, so it
+   reassures instead of alarming. */
+.search-slow {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  color: var(--text-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-media::after, .sk-line::after { animation: none; opacity: .5; }
+  .search-progress::after { animation: none; left: 0; width: 100%; opacity: .45; }
+}

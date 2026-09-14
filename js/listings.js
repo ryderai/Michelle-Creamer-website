@@ -404,6 +404,61 @@ function searchListings(list, q) {
   );
 }
 
+/* ---------- waiting for the MLS ----------
+   A search against Greater Alabama MLS takes one to twelve seconds. The page
+   used to show an empty grid for that entire time, which reads as broken
+   rather than busy. These draw the shape of the answer while it loads: cards
+   the same size as the real ones, so nothing jumps when the results arrive. */
+
+function skeletonCard() {
+  return (
+    '<div class="lc-skeleton" aria-hidden="true">' +
+      '<div class="sk-media"></div>' +
+      '<div class="sk-body">' +
+        '<div class="sk-line price"></div>' +
+        '<div class="sk-line addr"></div>' +
+        '<div class="sk-line city"></div>' +
+        '<div class="sk-specs">' +
+          '<div class="sk-line"></div><div class="sk-line"></div><div class="sk-line"></div>' +
+        "</div>" +
+      "</div>" +
+    "</div>"
+  );
+}
+
+/* Enough to fill the fold without pretending to know the result count. */
+function showSkeletons(grid, n) {
+  const count = Math.max(3, Math.min(n || 6, 12));
+  grid.innerHTML = new Array(count).fill(skeletonCard()).join("");
+}
+
+/* The bar and the "still working" line live next to the toolbar. They are
+   created here rather than in the HTML so every listing page gets them
+   without six near-identical edits. */
+function loadingUi(page, grid) {
+  const toolbar = page.querySelector(".listing-toolbar");
+  const anchor = toolbar || grid;
+  let bar = page.querySelector("[data-search-progress]");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "search-progress";
+    bar.setAttribute("data-search-progress", "");
+    bar.hidden = true;
+    anchor.insertAdjacentElement("afterend", bar);
+  }
+  let slow = page.querySelector("[data-search-slow]");
+  if (!slow) {
+    slow = document.createElement("p");
+    slow.className = "search-slow";
+    slow.setAttribute("data-search-slow", "");
+    slow.setAttribute("role", "status");
+    slow.setAttribute("aria-live", "polite");
+    slow.hidden = true;
+    bar.insertAdjacentElement("afterend", slow);
+  }
+  return { bar, slow };
+}
+
 function emptyState(msg, heading) {
   return (
     '<div class="listing-empty" style="grid-column:1/-1">' +
@@ -492,10 +547,35 @@ function initServerGrid(grid) {
     return LISTINGS_API.endpoint + "?" + qs.toString();
   };
 
+  const { bar: progressBar, slow: slowNote } = loadingUi(page, grid);
+  let slowTimer = null, verySlowTimer = null;
+
   const render = async () => {
     const ticket = ++inFlight;               // ignore answers from stale requests
     grid.setAttribute("aria-busy", "true");
-    if (countEl) countEl.textContent = "Searching…";
+
+    /* Draw the shape of the answer straight away. The grid used to sit empty
+       for the full one-to-twelve seconds the MLS takes, which looks broken. */
+    const expected = grid.querySelectorAll(".listing-card").length || pageSize;
+    showSkeletons(grid, limit || expected);
+    progressBar.hidden = false;
+    if (countEl) {
+      countEl.textContent = "Searching the MLS…";
+      countEl.classList.add("searching");
+    }
+
+    /* Only speak up once the wait stops being normal. Saying "this is slow"
+       at half a second would create the worry it is meant to settle. */
+    clearTimeout(slowTimer); clearTimeout(verySlowTimer);
+    slowNote.hidden = true;
+    slowTimer = setTimeout(() => {
+      slowNote.textContent = "Still searching — the MLS is taking a moment.";
+      slowNote.hidden = false;
+    }, 4000);
+    verySlowTimer = setTimeout(() => {
+      slowNote.textContent =
+        "Still searching. Greater Alabama MLS can be slow at busy times — this will finish.";
+    }, 10000);
 
     let data = { listings: [], total: 0 };
     try {
@@ -511,6 +591,11 @@ function initServerGrid(grid) {
       data = { listings: [], total: 0, searchUnavailable: true };
     }
     if (ticket !== inFlight) return;         // a newer search already answered
+
+    clearTimeout(slowTimer); clearTimeout(verySlowTimer);
+    progressBar.hidden = true;
+    slowNote.hidden = true;
+    if (countEl) countEl.classList.remove("searching");
 
     const typed = searchBox ? searchBox.value.trim() : "";
     const list = (data.listings || []).map(normalizeListing);
@@ -612,7 +697,20 @@ function initServerGrid(grid) {
 
 /* ---------- a grid backed by Michelle's own listings ---------- */
 async function initAgentGrid(grid) {
+  /* Michelle's own listings come from the same slow MLS, so the homepage
+     "Featured Listings" shelf sat empty while it loaded. Draw the shape first.
+     Sections that hide themselves when empty are skipped — flashing six
+     skeletons and then vanishing is worse than waiting quietly. */
+  const hidesWhenEmpty = grid.hasAttribute("data-hide-if-empty") ||
+                         grid.closest("[data-hide-if-empty]");
+  if (!hidesWhenEmpty) {
+    const want = parseInt(grid.getAttribute("data-limit") || "0", 10) || 6;
+    showSkeletons(grid, want);
+    grid.setAttribute("aria-busy", "true");
+  }
+
   const all = await fetchListings("agent");
+  grid.removeAttribute("aria-busy");
   stampFeedFreshness();
 
   const filter = grid.getAttribute("data-filter") || "all";
