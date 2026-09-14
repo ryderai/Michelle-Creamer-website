@@ -233,6 +233,9 @@ const PROBE_MISS = "ZQXJVWQ";      // matches nothing, so the probe stays cheap
 
 let _probe = null, _probeInFlight = null;
 const PROBE_TTL = 30 * 60 * 1000;
+/* If the probe came back degraded, re-ask sooner — a transient MLS blip should
+   not lock the site into a worse search for half an hour. */
+const DEGRADED_TTL = 5 * 60 * 1000;
 
 async function runProbe() {
   const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
@@ -242,38 +245,49 @@ async function runProbe() {
       return true;
     } catch { return false; }
   };
-  /* ONE parallel wave in the normal case: ask City (known good) and each
-     doubtful field with contains() at the same time. City's answer settles the
-     operator; the others settle the field list. A second wave runs only if this
-     server turns out not to support contains() at all. */
-  const probeSet = ["City"].concat(TEXT_FIELDS_DOUBTED);
-  let op = "contains";
-  let wave = await Promise.all(probeSet.map(f => ask(`contains(${f},'${PROBE_MISS}')`)));
 
-  if (!wave[0]) {
-    op = (await ask(`startswith(City,'${PROBE_MISS}')`)) ? "startswith" : "eq";
-    const clauseFor = (f) => op === "startswith"
-      ? `startswith(${f},'${PROBE_MISS}')` : `${f} eq '${PROBE_MISS}'`;
-    wave = [true].concat(await Promise.all(TEXT_FIELDS_DOUBTED.map(f => ask(clauseFor(f)))));
-  }
+  /* PER FIELD, PER OPERATOR. Measured 2026-09-14: this server does not have one
+     answer for "does contains() work". `contains(City,...)` is accepted while
+     `City eq '...'` is refused, and StreetName behaves the other way round.
+     An earlier version settled the operator with a single query against City
+     and applied that answer to every field — so one field's quirk decided how
+     the whole site searched, and picking `eq` meant a search for "boulder"
+     could never match the street "BOULDER LAKE".
 
-  const doubted  = wave.slice(1);
-  const usable   = TEXT_FIELDS_SAFE.concat(TEXT_FIELDS_DOUBTED.filter((f, i) => doubted[i]));
-  const rejected = TEXT_FIELDS_DOUBTED.filter((f, i) => !doubted[i]);
+     Each field now carries its own operator. Two parallel waves, cached. */
+  const all = TEXT_FIELDS_SAFE.concat(TEXT_FIELDS_DOUBTED);
+
+  const withContains = await Promise.all(all.map(f => ask(`contains(${f},'${PROBE_MISS}')`)));
+  const stillUnknown = all.filter((f, i) => !withContains[i]);
+  const withEq = await Promise.all(stillUnknown.map(f => ask(`${f} eq '${PROBE_MISS}'`)));
+
+  const ops = {};
+  all.forEach((f, i) => { if (withContains[i]) ops[f] = "contains"; });
+  stillUnknown.forEach((f, i) => { if (withEq[i]) ops[f] = "eq"; });
+
+  const usable   = all.filter(f => ops[f]);
+  const rejected = all.filter(f => !ops[f]);
+
+  /* A field that only does eq can still be searched, it just needs the whole
+     value. A field that does contains is far more useful, so those sort first
+     in the fan-out. */
   _probe = {
-    op,
-    usable: usable.length ? usable : TEXT_FIELDS_SAFE,
+    ops,
+    usable,
     rejected,
-    contains: op === "contains",
-    startswith: op === "startswith",
+    /* Kept for the zip and house-number clauses, which ask about one field. */
+    contains: ops.PostalCode === "contains",
+    startswith: false,
+    /* Degraded results should not be trusted for long. */
     at: Date.now(),
+    ttl: rejected.length > 1 ? DEGRADED_TTL : PROBE_TTL,
     measured: true
   };
   return _probe;
 }
 
 async function searchCaps() {
-  if (_probe && Date.now() < _probe.at + PROBE_TTL) return _probe;
+  if (_probe && Date.now() < _probe.at + (_probe.ttl || PROBE_TTL)) return _probe;
   if (!_probeInFlight) _probeInFlight = runProbe().finally(() => { _probeInFlight = null; });
   return _probeInFlight;
 }
@@ -474,12 +488,11 @@ async function textClause(parsed) {
   if (parsed.mlsNumber)
     return `(ListingKey eq ${q(parsed.mlsNumber)} or ListingId eq ${q(parsed.mlsNumber)})`;
 
-  const caps   = await stringCaps();
-  const fields = await textFields();
-  const match  = (field, value) =>
-      caps.contains   ? `contains(${field},${q(value)})`
-    : caps.startswith ? `startswith(${field},${q(value)})`
-    :                   `${field} eq ${q(value)}`;
+  const probe = await searchCaps();
+  const ops   = probe.ops || {};
+  const caps  = { contains: ops.PostalCode === "contains", startswith: false };
+  const match = (field, value) =>
+    ops[field] === "contains" ? `contains(${field},${q(value)})` : `${field} eq ${q(value)}`;
 
   /* A house number is exact, indexed, and cuts 12,600 rows to a handful.
      Street SUFFIX spellings vary too much to filter on ("CIR" vs "CIRCLE"),
@@ -552,16 +565,20 @@ async function textSearchRows(parsed, { required, extra = [], top, orderby, sele
   const caps   = await stringCaps();
   const probe  = await searchCaps();
   const usable = probe.usable;
-  const fields = FANOUT_FIELD_ORDER.filter(f => usable.includes(f)).slice(0, FANOUT_FIELDS_MAX);
+  const ops    = probe.ops || {};
+  /* Preferred order, but a field that can do contains() earns its place ahead
+     of one that can only match a whole value. */
+  const fields = FANOUT_FIELD_ORDER
+    .filter(f => usable.includes(f))
+    .sort((a, b) => (ops[b] === "contains" ? 1 : 0) - (ops[a] === "contains" ? 1 : 0))
+    .slice(0, FANOUT_FIELDS_MAX);
   /* "Incomplete" means we could not search where a street or neighbourhood name
      lives AT ALL. UnparsedAddress is permanently rejected by this server, so
      counting it made this flag constantly true and therefore meaningless —
      every genuine miss was being reported as "we could not look everywhere". */
   const incomplete = !usable.includes("StreetName") && !usable.includes("SubdivisionName");
-  const match  = (f, v) =>
-      caps.contains   ? `contains(${f},${q(v)})`
-    : caps.startswith ? `startswith(${f},${q(v)})`
-    :                   `${f} eq ${q(v)}`;
+  const match = (f, v) => ops[f] === "contains" ? `contains(${f},${q(v)})` : `${f} eq ${q(v)}`;
+  const anyContains = fields.some(f => ops[f] === "contains");
 
   /* Everything the visitor asked for that this server can filter on travels
      with every fan-out query — price, beds, baths, type, luxury. Leaving them
@@ -590,13 +607,24 @@ async function textSearchRows(parsed, { required, extra = [], top, orderby, sele
   const askWords = parsed.words.length ? parsed.words : parsed.needles;
   const phrase = askWords.join(" ");
   const byLength = askWords.slice().sort((a, b) => b.length - a.length);
-  const terms = (caps.contains || caps.startswith)
+  /* With contains() available, the broadest ask is best: "BOULDER" matches the
+     street "BOULDER LAKE" and the local pass narrows it. With eq only, the
+     longest phrase has to go first because a whole field value must match. */
+  const terms = anyContains
     ? [byLength[0], phrase, ...byLength.slice(1)]
     : phraseCandidates(askWords, 3, 6);
   const wanted = [...new Set(terms.filter(Boolean))];
   const uniqueTerms = wanted.slice(0, TERMS_MAX);
   let termsTruncated = wanted.length > uniqueTerms.length;
   let hitDeadline = false;
+
+  /* The probe found no field this server will filter on — during an outage,
+     every probe query fails and `usable` comes back empty. We cannot search at
+     all, and saying "no listings match" would be a lie. */
+  if (!fields.length) {
+    return { rows: [], saturated: false, notes: ["no searchable field available"],
+             incomplete: true, allFailed: true, exhaustedTerms: false };
+  }
 
   const seen = new Map();
   const notes = [];
@@ -1325,7 +1353,7 @@ export default async function handler(req, res) {
         localOnly: clauses ? { text: clauses.localOnlyText, type: clauses.localOnlyType } : null,
         localFiltered,
         mlsStringSupport: caps ? { contains: caps.contains, startswith: caps.startswith } : null,
-        mlsFilterableFields: _probe ? { usable: _probe.usable, rejected: _probe.rejected, operator: _probe.op } : 'probing',
+        mlsFilterableFields: _probe ? { perField: _probe.ops, rejected: _probe.rejected } : 'probing',
         vocabulary: vocab,
         usedAttempt, usedShape,
         attempts,

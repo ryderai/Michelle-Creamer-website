@@ -437,5 +437,49 @@ const deep = await call({ scope: "all", minPrice: "100000", maxPrice: "9000000",
 ok("four refinements still answer", deep.body.count > 0 || deep.body.total >= 0,
    `count=${deep.body.count} status ok`);
 
+
+/* ===== GALMLS AS ACTUALLY MEASURED, 2026-09-14 evening =====
+   Per-field, per-operator support. City takes contains but NOT eq. StreetName
+   takes eq but NOT contains. UnparsedAddress is refused outright. And no filter
+   may carry more than one contains(). */
+const GALMLS = {
+  supportsContains: true,
+  maxContains: 1,
+  poisonFields: ["UnparsedAddress"],
+  fieldOps: {
+    City:            ["contains"],
+    StreetName:      ["eq", "contains"],
+    SubdivisionName: ["eq", "contains"],
+    PostalCode:      ["eq", "contains"]
+  }
+};
+
+S("the server as measured: per-field, per-operator support");
+for (const term of ["boulder", "Boulder Lake", "Vestavia Hills", "Liberty Park",
+                    "4413 Boulder Lake Cir", "21463762", "35242", "cove"]) {
+  const r = await call({ scope: "all", q: term, pageSize: "24" }, GALMLS);
+  ok(`"${term}" answers without an outage`, r.body.searchUnavailable !== true,
+     `unavail=${r.body.searchUnavailable}`);
+  ok(`"${term}" never dumps the market`, r.body.total < rows.length, `total=${r.body.total}`);
+}
+for (const term of ["boulder", "Boulder Lake", "4413 Boulder Lake Cir", "21463762", "35242"]) {
+  const r = await call({ scope: "all", q: term, pageSize: "24" }, GALMLS);
+  ok(`"${term}" finds 4413 BOULDER LAKE CIRCLE`, found(r, "4413 BOULDER LAKE CIRCLE"),
+     `count=${r.body.count} addrs=${addrs(r).slice(0,3).join(" | ")}`);
+}
+
+S("a field that only accepts one operator does not poison the rest");
+const cityOnlyContains = await call({ scope: "all", q: "Vestavia Hills", pageSize: "24" }, GALMLS);
+ok("city search still returns rows", cityOnlyContains.body.count > 0, `count=${cityOnlyContains.body.count}`);
+ok("city search returns only that city",
+   (cityOnlyContains.body.listings || []).every(l => l.city === "VESTAVIA HILLS"),
+   [...new Set((cityOnlyContains.body.listings||[]).map(l=>l.city))].join(","));
+
+S("word search + filters, against the real server shape");
+const realCombo = await call({ scope: "all", q: "Vestavia", minPrice: "900000", pageSize: "24" }, GALMLS);
+ok("price floor honoured on the real server shape",
+   (realCombo.body.listings || []).every(l => l.price >= 900000),
+   (realCombo.body.listings||[]).map(l=>l.price).slice(0,5).join(","));
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

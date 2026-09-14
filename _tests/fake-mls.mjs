@@ -1,7 +1,14 @@
 /* A stand-in for Greater Alabama MLS that behaves like the real one:
    it answers HTTP 500 to any $filter containing contains( or startswith(,
    which is the measured behaviour that caused the bug. */
-export function makeFakeMls(rows, { supportsContains = false, failEverything = false, poisonFields = [], maxContains = Infinity } = {}) {
+export function makeFakeMls(rows, {
+  supportsContains = false, failEverything = false, poisonFields = [],
+  maxContains = Infinity,
+  /* Measured on GALMLS 2026-09-14: support is PER FIELD AND PER OPERATOR.
+     contains(City,..) is accepted while City eq '..' is refused; StreetName is
+     the other way round. fieldOps maps field -> the operators it accepts. */
+  fieldOps = null
+} = {}) {
   const calls = [];
   return {
     calls,
@@ -30,6 +37,18 @@ export function makeFakeMls(rows, { supportsContains = false, failEverything = f
          the rest of it is. */
       if (poisonFields.some(f => new RegExp("\\b" + f + "\\b").test(filter))) {
         return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
+      }
+      if (fieldOps) {
+        for (const [f, allowed] of Object.entries(fieldOps)) {
+          const usesContains = new RegExp("contains\\(" + f + ",").test(filter);
+          const usesEq = new RegExp("\\b" + f + " eq ").test(filter);
+          if (usesContains && !allowed.includes("contains")) {
+            return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
+          }
+          if (usesEq && !allowed.includes("eq")) {
+            return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
+          }
+        }
       }
       if (u.includes("OpenHouse?")) {
         return { ok: true, status: 200, json: async () => ({ value: [] }) };
