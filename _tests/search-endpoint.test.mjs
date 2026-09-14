@@ -213,9 +213,12 @@ S("cost: MLS round trips per search");
 const cold = await call({ scope: "all", q: "4413 Boulder Lake Cir", pageSize: "24" });
 /* Includes the two background capability probes, which do NOT delay the
    request — they are fired and not awaited. */
-ok("a cold house-number search stays under 10 MLS calls", cold.mlsCalls <= 10, `calls=${cold.mlsCalls}`);
+ok("a cold house-number search stays under 16 MLS calls", cold.mlsCalls <= 16, `calls=${cold.mlsCalls}`);
 const coldCity = await call({ scope: "all", q: "Vestavia Hills", pageSize: "24" });
-ok("a cold city search stays under 10 MLS calls", coldCity.mlsCalls <= 10, `calls=${coldCity.mlsCalls}`);
+/* These are PARALLEL waves, not sequential round trips: the capability probe is
+   one wave of 4, the fan-out one wave of 4 per term. Wall-clock is the slowest
+   query in each wave, and textSearchRows() also stops at a 30s deadline. */
+ok("a cold city search stays under 16 MLS calls", coldCity.mlsCalls <= 16, `calls=${coldCity.mlsCalls}`);
 
 
 /* ============ THE SEPT 14 FAULT: a poisoned field 500s the whole query ============ */
@@ -253,6 +256,186 @@ ok("an unsearchable term is flagged searchLimited, not 'no match'",
    lim.body.searchLimited === true || lim.body.count > 0,
    `limited=${lim.body.searchLimited} count=${lim.body.count}`);
 ok("an unsearchable term still returns no wrong houses", lim.body.count === 0 || lim.body.total < rows.length);
+
+
+/* ===== THE REAL GALMLS, as measured 2026-09-14 =====
+   contains() works, but only ONE per filter, and UnparsedAddress is poisoned. */
+const REAL = { supportsContains: true, maxContains: 1, poisonFields: ["UnparsedAddress"] };
+
+S("against a fake MLS configured exactly like the real one");
+for (const term of ["boulder", "Boulder Lake", "Vestavia Hills", "Liberty Park",
+                    "4413 Boulder Lake Cir", "21463762", "35242"]) {
+  const r = await call({ scope: "all", q: term, pageSize: "24" }, REAL);
+  ok(`"${term}" finds 4413 BOULDER LAKE CIRCLE`, found(r, "4413 BOULDER LAKE CIRCLE"),
+     `count=${r.body.count} unavailable=${r.body.searchUnavailable} addrs=${addrs(r).slice(0,3).join(" | ")}`);
+  ok(`"${term}" is never flagged unavailable`, r.body.searchUnavailable !== true);
+  ok(`"${term}" never dumps the market`, r.body.total < rows.length, `total=${r.body.total}`);
+}
+for (const term of ["Fultondale", "Hoover", "Chelsea"]) {
+  const r = await call({ scope: "all", q: term, pageSize: "24" }, REAL);
+  ok(`"${term}" returns rows`, r.body.count > 0, `count=${r.body.count}`);
+  ok(`"${term}" excludes Boulder Lake`, !found(r, "4413 BOULDER LAKE CIRCLE"), addrs(r).slice(0,3).join(" | "));
+}
+const miss = await call({ scope: "all", q: "Zzzqqq Nowhere", pageSize: "24" }, REAL);
+ok("a true miss returns nothing", miss.body.count === 0, String(miss.body.count));
+ok("a true miss is not an outage", miss.body.searchUnavailable !== true);
+
+S("type filter combined with a word search");
+const combo = await call({ scope: "all", q: "Vestavia Hills", type: "single-family", pageSize: "24" }, REAL);
+ok("word + type returns rows", combo.body.count > 0, `count=${combo.body.count}`);
+ok("word + type excludes leases", !(combo.body.listings || []).some(l => l.type === "rental"));
+ok("word + type stays in the city", (combo.body.listings || []).every(l => l.city === "VESTAVIA HILLS"),
+   [...new Set((combo.body.listings||[]).map(l=>l.city))].join(","));
+
+
+/* ===== REGRESSIONS for the 11 defects found in review on 2026-09-14 ===== */
+S("D1: a word search must NOT throw away price / beds / baths");
+const f1 = await call({ scope: "all", q: "Birmingham", minPrice: "800000", pageSize: "50" }, REAL);
+ok("word + minPrice honours the price floor",
+   (f1.body.listings || []).every(l => l.price >= 800000),
+   (f1.body.listings||[]).map(l=>l.price).slice(0,6).join(","));
+const f2 = await call({ scope: "all", q: "Birmingham", maxPrice: "300000", pageSize: "50" }, REAL);
+ok("word + maxPrice honours the ceiling", (f2.body.listings || []).every(l => l.price <= 300000),
+   (f2.body.listings||[]).map(l=>l.price).slice(0,6).join(","));
+const f3 = await call({ scope: "all", q: "Birmingham", beds: "5", pageSize: "50" }, REAL);
+ok("word + beds honours the bedroom floor", (f3.body.listings || []).every(l => l.beds >= 5),
+   (f3.body.listings||[]).map(l=>l.beds).slice(0,6).join(","));
+const f4 = await call({ scope: "all", q: "Birmingham", minPrice: "800000", beds: "4", baths: "2", pageSize: "50" }, REAL);
+ok("word + three filters at once, all honoured",
+   (f4.body.listings || []).every(l => l.price >= 800000 && l.beds >= 4 && l.baths >= 2),
+   `n=${f4.body.count}`);
+
+S("D3: escalation must not drop price or luxury");
+const e1 = await call({ scope: "all", q: "35242", minPrice: "5000000", pageSize: "50" }, REAL);
+ok("an impossible price + zip returns nothing, not cheap houses",
+   (e1.body.listings || []).every(l => l.price >= 5000000),
+   (e1.body.listings||[]).map(l=>l.price).slice(0,5).join(","));
+const e2 = await call({ scope: "all", q: "35242", luxury: "1", pageSize: "50" }, REAL);
+ok("zip + luxury returns only luxury", (e2.body.listings || []).every(l => l.price >= 1000000),
+   (e2.body.listings||[]).map(l=>l.price).slice(0,5).join(","));
+
+S("D6: luxury and new-construction survive a word search");
+const l1 = await call({ scope: "all", q: "Vestavia", luxury: "1", pageSize: "50" }, REAL);
+ok("word + luxury returns only luxury", (l1.body.listings || []).every(l => l.price >= 1000000),
+   (l1.body.listings||[]).map(l=>l.price).slice(0,5).join(","));
+const l2 = await call({ scope: "all", q: "Vestavia", luxury: "1", newConstruction: "1", pageSize: "50" }, REAL);
+ok("word + luxury + new construction keeps the price floor",
+   (l2.body.listings || []).every(l => l.price >= 1000000), `n=${l2.body.count}`);
+
+S("D4: a total fan-out outage is an outage, not 'no match'");
+const dead2 = await call({ scope: "all", q: "Vestavia Hills", pageSize: "24" }, { failEverything: true });
+ok("every query failing is flagged searchUnavailable", dead2.body.searchUnavailable === true,
+   JSON.stringify(dead2.body).slice(0,140));
+ok("an outage returns no listings", (dead2.body.listings || []).length === 0);
+
+S("D5: searchLimited is not a constant");
+const miss2 = await call({ scope: "all", q: "Zzzqqq Nowhere", pageSize: "24" }, REAL);
+ok("a genuine miss is NOT flagged limited", miss2.body.searchLimited !== true,
+   `limited=${miss2.body.searchLimited}`);
+ok("a genuine miss returns nothing", miss2.body.count === 0);
+
+S("D7: a windowed total is never invented");
+const big = await call({ scope: "all", q: "Birmingham", pageSize: "24" }, REAL);
+ok("a saturated search says 'or more' rather than a made-up total",
+   big.body.truncated === false || big.body.countKnown === false,
+   `truncated=${big.body.truncated} countKnown=${big.body.countKnown} total=${big.body.total}`);
+ok("total is at least what was returned", big.body.total >= big.body.count,
+   `total=${big.body.total} count=${big.body.count}`);
+
+S("D8: merged results are re-sorted before paging");
+const s1 = await call({ scope: "all", q: "Birmingham", sort: "price-asc", pageSize: "40" }, REAL);
+const sp = (s1.body.listings || []).map(l => l.price);
+ok("a word search sorted by price is actually ascending",
+   sp.every((v, i) => i === 0 || sp[i-1] <= v), sp.slice(0,8).join(","));
+const s2 = await call({ scope: "all", q: "Birmingham", sort: "price-desc", pageSize: "40" }, REAL);
+const sd = (s2.body.listings || []).map(l => l.price);
+ok("a word search sorted high-to-low is actually descending",
+   sd.every((v, i) => i === 0 || sd[i-1] >= v), sd.slice(0,8).join(","));
+
+S("D9: agent scope narrows locally too");
+const ag = await call({ q: "boulder lake" });
+ok("agent-scope word search returns only matching rows",
+   (ag.body.listings || []).every(l => /BOULDER LAKE/.test(l.address)),
+   addrs(ag).join(" | "));
+
+S("D11: a bare house number asks about StreetNumber");
+const bare = await call({ scope: "all", q: "4413", pageSize: "24" }, REAL);
+ok('"4413" finds houses numbered 4413', (bare.body.listings || []).some(l => /^4413 /.test(l.address)),
+   addrs(bare).slice(0,4).join(" | "));
+ok('"4413" is not flagged limited', bare.body.searchLimited !== true);
+
+S("paging a word search");
+const w1b = await call({ scope: "all", q: "Birmingham", page: "1", pageSize: "10", sort: "price-asc" }, REAL);
+const w2b = await call({ scope: "all", q: "Birmingham", page: "2", pageSize: "10", sort: "price-asc" }, REAL);
+const wid = [...w1b.body.listings, ...w2b.body.listings].map(l => l.id);
+ok("no listing repeats across two pages of a word search", new Set(wid).size === wid.length,
+   `${new Set(wid).size} unique of ${wid.length}`);
+ok("page 2 continues the sort",
+   !w1b.body.listings.length || !w2b.body.listings.length ||
+   w1b.body.listings[w1b.body.listings.length-1].price <= w2b.body.listings[0].price,
+   `p1 last=${(w1b.body.listings.slice(-1)[0]||{}).price} p2 first=${(w2b.body.listings[0]||{}).price}`);
+
+
+/* ===== REGRESSIONS for the 12 defects found in the second review, 2026-09-14 ===== */
+S("N4: an unreadable query must never return the market");
+for (const junk of ["!!!", "%26", "カーサ", "a b", "AL", "###", "- -"]) {
+  const r = await call({ scope: "all", q: junk, pageSize: "24" }, REAL);
+  ok(`q=${JSON.stringify(junk)} does not return the market`, r.body.total < rows.length,
+     `total=${r.body.total} of ${rows.length}`);
+  ok(`q=${JSON.stringify(junk)} returns no listings`, r.body.count === 0, `count=${r.body.count}`);
+}
+const okWord = await call({ scope: "all", q: "cove", pageSize: "24" }, REAL);
+ok('"cove" is still a real search, not treated as noise', okWord.body.count > 0, `count=${okWord.body.count}`);
+
+S("N1: a bare zip pages the MLS normally, not capped at a 300-row window");
+const zipPage = await call({ scope: "all", q: "35242", pageSize: "24" }, REAL);
+ok("a zip search is not windowed", zipPage.body.windowed !== true, `windowed=${zipPage.body.windowed}`);
+ok("a zip search returns only that zip",
+   (zipPage.body.listings || []).every(l => String(l.zip).startsWith("35242")),
+   [...new Set((zipPage.body.listings||[]).map(l=>l.zip))].join(","));
+
+S("N5: a leading zip is searched as a zip");
+const zw = await call({ scope: "all", q: "35242 Boulder", pageSize: "24" }, REAL);
+ok('"35242 Boulder" finds her house', found(zw, "4413 BOULDER LAKE CIRCLE"), addrs(zw).slice(0,4).join(" | "));
+
+S("N8: a repeated query parameter does not fabricate a filter");
+const dup = await call({ scope: "all", beds: ["1","2"], pageSize: "24" }, REAL);
+ok("?beds=1&beds=2 uses the first value, not 12",
+   (dup.body.listings || []).length > 0 && (dup.body.listings || []).every(l => l.beds >= 1),
+   `count=${dup.body.count}`);
+
+S("N2: a refinement the MLS dislikes gives broader results, not an outage");
+const ladder = await call({ scope: "all", q: "Birmingham", minPrice: "300000", pageSize: "24" },
+                          { ...REAL, poisonFields: ["UnparsedAddress"] });
+ok("word + price still answers", ladder.body.searchUnavailable !== true,
+   `unavailable=${ladder.body.searchUnavailable}`);
+
+S("N10: a bath filter does not drop rows whose total column is null");
+const bathRows = rows.map(r => ({ ...r }));
+const nullBath = { ...HER, ListingKey: "70001", ListingId: "70001", City: "HOOVER",
+  UnparsedAddress: "5 NULLBATH LANE", StreetName: "NULLBATH", StreetNumber: "5",
+  BathroomsTotalInteger: null, BathroomsFull: 3, BathroomsHalf: 0 };
+rows.push(nullBath);
+const bq = await call({ scope: "all", q: "NULLBATH", baths: "2", pageSize: "24" }, REAL);
+ok("a 3-bath home with a null total column is not excluded",
+   found(bq, "5 NULLBATH LANE"), `count=${bq.body.count} addrs=${addrs(bq).join(" | ")}`);
+rows.pop();
+
+S("N12: searchUnavailable and searchLimited are never both true");
+for (const t of ["Vestavia Hills", "zzzqqq", "cove", "4413 Boulder Lake Cir"]) {
+  for (const opts of [REAL, { failEverything: true }]) {
+    const r = await call({ scope: "all", q: t, pageSize: "24" }, opts);
+    ok(`"${t}" never ships both flags`,
+       !(r.body.searchUnavailable === true && r.body.searchLimited === true),
+       `unavail=${r.body.searchUnavailable} limited=${r.body.searchLimited}`);
+  }
+}
+
+S("N9: the drop ladder can reach the bottom");
+const deep = await call({ scope: "all", minPrice: "100000", maxPrice: "9000000",
+                          beds: "1", baths: "1", pageSize: "24" }, REAL);
+ok("four refinements still answer", deep.body.count > 0 || deep.body.total >= 0,
+   `count=${deep.body.count} status ok`);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

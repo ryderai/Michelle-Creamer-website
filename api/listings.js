@@ -41,7 +41,12 @@ const DEFAULT_PAGE    = 24;        // listings per page for a search
 const MAX_PAGE        = 96;        // hard cap on pageSize a caller can ask for
 const AGENT_MAX       = 200;
 const WINDOW_TOP      = 300;       // rows pulled when the MLS cannot narrow a search precisely
-const MAX_ATTEMPTS    = 8;         // GALMLS costs 4-6s per try; a long ladder times the function out       // one agent never has more than this
+/* Four shapes per drop level. The cap has to leave room for every droppable
+   clause to actually be dropped — a fixed 8 meant a query with three
+   refinements could never reach the bottom of its own ladder and 502'd
+   instead. */
+const SHAPES_PER_LEVEL = 4;
+const MAX_LEVELS       = 4;       // one agent never has more than this
 const CACHE_SECONDS   = 60 * 60 * 3;    // 3h — well inside the 12h IDX refresh floor
 
 /* Statuses we display. Anything else (Withdrawn, Expired, Canceled,
@@ -192,8 +197,12 @@ function normalize(raw, { lean = false } = {}) {
 /* ---------- turning URL parameters into an MLS query ---------- */
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+/* Vercel hands back an array when a parameter repeats: ?beds=1&beds=2 arrives
+   as ["1","2"], and String() turned that into "1,2" -> 12. A visitor got
+   "12+ bedrooms" and no results. Take the first value and ignore the rest. */
+const one = (v) => Array.isArray(v) ? v[0] : v;
 const num = (v) => {
-  const n = Number(String(v).replace(/[^0-9.]/g, ""));
+  const n = Number(String(one(v)).replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
@@ -208,92 +217,76 @@ const num = (v) => {
    Rather than hard-code "no contains() forever" — Paragon may fix it — this
    measures the server once per warm instance and uses the best tool it has.
    Everything below falls back to eq, which this server has never refused. */
-let _caps = null;
 const CAPS_TTL = 30 * 60 * 1000;
 
 const CAPS_OFF = { contains: false, startswith: false, at: 0, measured: false };
-let _capsInFlight = null;
 
-/* Non-blocking on purpose. eq alone is enough to build every query below, so a
-   request never waits on this probe; it learns in the background and the NEXT
-   request gets the better operators if the server grew them. */
+/* ONE probe answers both questions at once: which fields this server will
+   filter on, and which string operator it accepts. It is AWAITED, not fired in
+   the background — an earlier version returned a safe subset while the probe
+   ran, which meant the first request after a cold start searched only City and
+   PostalCode and found nothing. Being two seconds slower once per warm instance
+   beats being wrong. Cached for 30 minutes after that. */
+const TEXT_FIELDS_SAFE    = ["City", "PostalCode"];               // measured working
+const TEXT_FIELDS_DOUBTED = ["StreetName", "SubdivisionName", "UnparsedAddress"];
+const PROBE_MISS = "ZQXJVWQ";      // matches nothing, so the probe stays cheap
+
+let _probe = null, _probeInFlight = null;
+const PROBE_TTL = 30 * 60 * 1000;
+
+async function runProbe() {
+  const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
+  const ask = async (clause) => {
+    try {
+      await odata(`Property?$filter=${encodeURIComponent(base + " and " + clause)}&$top=1`);
+      return true;
+    } catch { return false; }
+  };
+  /* ONE parallel wave in the normal case: ask City (known good) and each
+     doubtful field with contains() at the same time. City's answer settles the
+     operator; the others settle the field list. A second wave runs only if this
+     server turns out not to support contains() at all. */
+  const probeSet = ["City"].concat(TEXT_FIELDS_DOUBTED);
+  let op = "contains";
+  let wave = await Promise.all(probeSet.map(f => ask(`contains(${f},'${PROBE_MISS}')`)));
+
+  if (!wave[0]) {
+    op = (await ask(`startswith(City,'${PROBE_MISS}')`)) ? "startswith" : "eq";
+    const clauseFor = (f) => op === "startswith"
+      ? `startswith(${f},'${PROBE_MISS}')` : `${f} eq '${PROBE_MISS}'`;
+    wave = [true].concat(await Promise.all(TEXT_FIELDS_DOUBTED.map(f => ask(clauseFor(f)))));
+  }
+
+  const doubted  = wave.slice(1);
+  const usable   = TEXT_FIELDS_SAFE.concat(TEXT_FIELDS_DOUBTED.filter((f, i) => doubted[i]));
+  const rejected = TEXT_FIELDS_DOUBTED.filter((f, i) => !doubted[i]);
+  _probe = {
+    op,
+    usable: usable.length ? usable : TEXT_FIELDS_SAFE,
+    rejected,
+    contains: op === "contains",
+    startswith: op === "startswith",
+    at: Date.now(),
+    measured: true
+  };
+  return _probe;
+}
+
+async function searchCaps() {
+  if (_probe && Date.now() < _probe.at + PROBE_TTL) return _probe;
+  if (!_probeInFlight) _probeInFlight = runProbe().finally(() => { _probeInFlight = null; });
+  return _probeInFlight;
+}
+
+/* Kept for the callers that only care about the operator. */
 async function stringCaps() {
-  if (_caps && Date.now() < _caps.at + CAPS_TTL) return _caps;
-  if (!_capsInFlight) _capsInFlight = measureCaps().finally(() => { _capsInFlight = null; });
-  return CAPS_OFF;
+  const p = await searchCaps();
+  return { contains: p.contains, startswith: p.startswith, at: p.at, measured: true };
 }
 
-async function measureCaps() {
-  const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
-  const test = async (clause) => {
-    try {
-      await odata(`Property?$filter=${encodeURIComponent(base + " and " + clause)}&$top=1`);
-      return true;
-    } catch { return false; }
-  };
-  const [contains, startswith] = await Promise.all([
-    test("contains(City,'HOOVER')"),
-    test("startswith(City,'HOOVER')")
-  ]);
-  _caps = { contains, startswith, at: Date.now(), measured: true };
-  return _caps;
-}
-
-/* ---------- which FIELDS will this server filter on? ----------
-   Sep 14 2026, measured on the live feed. The first fix assumed the fault was
-   the contains() function. It is not: `contains(City,'HOOVER')` and
-   `startswith(City,'HOOVER')` both work. What actually happens is that GALMLS
-   answers HTTP 500 when a $filter mentions certain FIELDS at all, whatever the
-   operator — and one poisoned field 500s the whole query, including the parts
-   that were fine. That is why a four-way OR across City / PostalCode /
-   UnparsedAddress / SubdivisionName failed even though two of those four are
-   perfectly filterable.
-
-   PROVEN GOOD (measured through the live endpoint):
-     ListingKey, ListingId, PostalCode, StreetNumber, StreetNumber,
-     PropertyType, PropertySubType, ListPrice, BedroomsTotal, StandardStatus,
-     City (contains + startswith both answered 200)
-   UNKNOWN, and therefore probed here rather than guessed:
-     UnparsedAddress, SubdivisionName, StreetName
-
-   So the server is asked, once per warm instance, which of the doubtful fields
-   it will accept, and only the survivors are ever used. If Paragon fixes a
-   field later it starts being used automatically; if they break another one,
-   this degrades instead of returning a screen of wrong houses. */
-
-const TEXT_FIELDS_SAFE   = ["City", "PostalCode"];        // measured working
-const TEXT_FIELDS_DOUBTED = ["UnparsedAddress", "SubdivisionName", "StreetName"];
-
-let _fields = null;
-let _fieldsInFlight = null;
-const FIELDS_TTL = 30 * 60 * 1000;
-
-async function measureFields() {
-  const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
-  const caps = _caps || CAPS_OFF;
-  const probeOne = async (f) => {
-    /* A value that matches nothing keeps the query cheap — we are asking
-       "will you accept this field", not "what matches". */
-    const clause = caps.contains   ? `contains(${f},'ZQXJV')`
-                 : caps.startswith ? `startswith(${f},'ZQXJV')`
-                 :                   `${f} eq 'ZQXJV'`;
-    try {
-      await odata(`Property?$filter=${encodeURIComponent(base + " and " + clause)}&$top=1`);
-      return true;
-    } catch { return false; }
-  };
-  const results = await Promise.all(TEXT_FIELDS_DOUBTED.map(probeOne));
-  const usable = TEXT_FIELDS_SAFE.concat(TEXT_FIELDS_DOUBTED.filter((f, i) => results[i]));
-  _fields = { usable, rejected: TEXT_FIELDS_DOUBTED.filter((f, i) => !results[i]), at: Date.now() };
-  return _fields;
-}
-
-/* Non-blocking, exactly like stringCaps(): a request never waits on the probe.
-   Until it answers we use only the fields already proven to work. */
-function textFields() {
-  if (_fields && Date.now() < _fields.at + FIELDS_TTL) return _fields.usable;
-  if (!_fieldsInFlight) _fieldsInFlight = measureFields().finally(() => { _fieldsInFlight = null; });
-  return TEXT_FIELDS_SAFE;
+async function textFields() {
+  const p = await searchCaps();
+  return p.usable;
 }
 
 /* ---------- the MLS's own vocabulary ----------
@@ -369,6 +362,17 @@ async function typeClause(key) {
    "4413 Boulder Lake Cir" is a house number plus a street. "35242" is a zip.
    "21463762" is an MLS number. "Liberty Park" is a neighbourhood. Each of
    those wants a different question, and all four can be asked with eq. */
+/* Words that are never a search on their own: compass points, the state, unit
+   markers. "AL" matches StateOrProvince on every listing in the feed, so
+   letting it stand as a search term is a whole-market dump in disguise. */
+const NOISE_WORDS = new Set([
+  "N","S","E","W","NE","NW","SE","SW","NORTH","SOUTH","EAST","WEST",
+  "UNIT","APT","STE","SUITE","#","AL","ALABAMA","USA","US"
+]);
+
+/* Street-type words. Dropped when guessing a street name, because "CIR" and
+   "CIRCLE" are the same street — but KEPT as searchable words, because "Cove",
+   "Point" and "Trail" are real Alabama place names somebody will type. */
 const STREET_SUFFIXES = new Set([
   "ST","STREET","RD","ROAD","DR","DRIVE","LN","LANE","AVE","AVENUE","AV",
   "CIR","CIRCLE","CT","COURT","BLVD","BOULEVARD","WAY","PL","PLACE","PT","POINT",
@@ -389,13 +393,27 @@ function parseQuery(raw) {
     out.mlsNumber = tokens[0]; out.needles = [tokens[0]]; return out;
   }
 
+  /* A lone number is a house number worth asking about — "4413" used to fall
+     through to a word search and never reach StreetNumber at all. */
+  if (tokens.length === 1 && /^\d{1,6}[A-Z]?$/.test(tokens[0])) {
+    out.streetNumber = tokens[0].replace(/[^0-9]/g, "");
+    out.numberMayBeZip = /^\d{5}$/.test(out.streetNumber);
+    /* Five digits alone is far more often a zip than a house number, but it can
+       be either, so it stays both and the MLS is asked about both. */
+    if (out.numberMayBeZip) out.zip = out.streetNumber;
+    out.needles = [out.streetNumber];
+    return out;
+  }
+
   let rest = tokens.slice();
   if (/^\d{1,6}[A-Z]?$/.test(rest[0]) && rest.length > 1) {
     out.streetNumber = rest[0].replace(/[^0-9]/g, "");
     /* "35242 Kenmore" is a zip plus a street, but "35242 Old Highway 31" is a
-       house number. Five digits is genuinely ambiguous, so ask the MLS about
-       both and let the local pass settle it. */
+       house number. Five digits is genuinely ambiguous, so it is recorded as
+       BOTH and the MLS is asked about both. Recording only streetNumber meant
+       a leading zip was never searched as a zip at all. */
     out.numberMayBeZip = /^\d{5}$/.test(out.streetNumber);
+    if (out.numberMayBeZip) out.zip = out.streetNumber;
     rest = rest.slice(1);
   }
 
@@ -410,11 +428,15 @@ function parseQuery(raw) {
      are real place names), the search must still mean something. Before
      Sep 13 2026 this filtered twice with the same predicate, so a suffix-only
      query ended up with no needles at all and matched every listing. */
-  out.words = rest.filter(w => w.length > 1 && !STREET_SUFFIXES.has(w) && w !== zipTok);
+  out.words = rest.filter(w =>
+    w.length > 1 && !STREET_SUFFIXES.has(w) && !NOISE_WORDS.has(w) && w !== zipTok);
+  /* The fallback must not re-admit the noise words, and must not admit
+     single letters: needles of ["A","B"] match nearly every listing, which is
+     the whole-market dump wearing a disguise. */
+  const fallback = rest.filter(w => w.length > 1 && !NOISE_WORDS.has(w));
   out.needles = [out.streetNumber, out.zip]
-    .concat(out.words.length ? out.words : rest.filter(w => w.length > 1))
+    .concat(out.words.length ? out.words : fallback)
     .filter(Boolean);
-  if (!out.needles.length) out.needles = tokens.slice();
   return out;
 }
 
@@ -453,7 +475,7 @@ async function textClause(parsed) {
     return `(ListingKey eq ${q(parsed.mlsNumber)} or ListingId eq ${q(parsed.mlsNumber)})`;
 
   const caps   = await stringCaps();
-  const fields = textFields();
+  const fields = await textFields();
   const match  = (field, value) =>
       caps.contains   ? `contains(${field},${q(value)})`
     : caps.startswith ? `startswith(${field},${q(value)})`
@@ -463,9 +485,13 @@ async function textClause(parsed) {
      Street SUFFIX spellings vary too much to filter on ("CIR" vs "CIRCLE"),
      so the number narrows and the local pass decides. */
   if (parsed.streetNumber) {
-    return parsed.numberMayBeZip
-      ? `(StreetNumber eq ${q(parsed.streetNumber)} or PostalCode eq ${q(parsed.streetNumber)})`
-      : `StreetNumber eq ${q(parsed.streetNumber)}`;
+    if (!parsed.numberMayBeZip) return `StreetNumber eq ${q(parsed.streetNumber)}`;
+    const alts = [`StreetNumber eq ${q(parsed.streetNumber)}`,
+                  `PostalCode eq ${q(parsed.streetNumber)}`];
+    /* One contains() in a filter is accepted by this server; several are not.
+       This is the one. */
+    if (caps.contains || caps.startswith) alts.push(match("PostalCode", parsed.streetNumber));
+    return "(" + alts.join(" or ") + ")";
   }
 
   /* A zip on its own is exact and cheap.
@@ -480,28 +506,185 @@ async function textClause(parsed) {
     return "(" + z.join(" or ") + ")";
   }
 
-  const parts = [];
-  if (parsed.zip) parts.push(`PostalCode eq ${q(parsed.zip)}`);
+  /* A multi-word search is NOT built here. It goes to textSearchRows(), which
+     asks one field at a time. An earlier version assembled up to 48 contains()
+     into a single filter — the exact shape this server answers 500 to. That
+     code is gone rather than left dormant, because one edit to the routing
+     above would have re-armed it. */
 
-  /* The whole phrase first, then shorter runs. Only fields this server has
-     agreed to filter on are named — one poisoned field 500s the entire query,
-     including the parts that were fine, which is the fault that survived the
-     first fix. */
-  const cands = phraseCandidates(parsed.words);
-  if (cands.length && fields.length) {
-    const alts = [];
-    for (const c of cands) {
-      for (const f of fields) {
-        if (f === "PostalCode" && !/^\d+$/.test(c)) continue;   // pointless on words
-        alts.push(match(f, c));
+  /* Nothing the server will accept for this shape. Return null so the caller
+     switches to a window and decides locally, rather than sending a query that
+     500s. */
+  return null;
+}
+
+/* ---------- text search: fan out, don't pile up ----------
+   Measured on the live feed 2026-09-14, after two wrong theories:
+
+     contains(City,'HOOVER')                              -> 200 OK
+     (PostalCode eq '35242' or contains(PostalCode,'…'))  -> 200 OK, 8.8s, rows
+     (contains(City,…) or contains(SubdivisionName,…)
+      or contains(StreetName,…))                          -> 500 in 767ms
+
+   ONE contains() is fine. THREE of them OR'd together are refused outright —
+   in well under a second, so this is the server rejecting the shape of the
+   query, not timing out on the work. Field count is not the issue either: a
+   four-way OR of eq clauses across PropertyType and PropertySubType works.
+
+   So the text search stops trying to say everything in one filter. It asks one
+   small, proven question per field, in PARALLEL, and merges the answers. Total
+   wait is the slowest single query rather than the sum, and every query sent is
+   a shape this server has already answered.
+
+   `UnparsedAddress` is excluded by the field probe — naming it 500s a query on
+   its own, whatever the operator. */
+
+/* Order matters: a person searching words is usually naming a street, a
+   neighbourhood or a town, in that order. PostalCode is last and only ever
+   asked about digits. */
+const FANOUT_FIELD_ORDER = ["StreetName", "SubdivisionName", "City", "UnparsedAddress", "PostalCode"];
+const FANOUT_FIELDS_MAX = 4;
+const TERMS_MAX = 3;          // worst case 3 terms x 4 fields, breaking on the first hit
+const FANOUT_DEADLINE_MS = 15000;   // stop asking rather than risk the 60s function ceiling
+
+async function textSearchRows(parsed, { required, extra = [], top, orderby, select, keep }) {
+  const startedAt = Date.now();
+  const caps   = await stringCaps();
+  const probe  = await searchCaps();
+  const usable = probe.usable;
+  const fields = FANOUT_FIELD_ORDER.filter(f => usable.includes(f)).slice(0, FANOUT_FIELDS_MAX);
+  /* "Incomplete" means we could not search where a street or neighbourhood name
+     lives AT ALL. UnparsedAddress is permanently rejected by this server, so
+     counting it made this flag constantly true and therefore meaningless —
+     every genuine miss was being reported as "we could not look everywhere". */
+  const incomplete = !usable.includes("StreetName") && !usable.includes("SubdivisionName");
+  const match  = (f, v) =>
+      caps.contains   ? `contains(${f},${q(v)})`
+    : caps.startswith ? `startswith(${f},${q(v)})`
+    :                   `${f} eq ${q(v)}`;
+
+  /* Everything the visitor asked for that this server can filter on travels
+     with every fan-out query — price, beds, baths, type, luxury. Leaving them
+     out was how a word search silently widened to the whole city. */
+  const base = required.concat(extra);
+  const run = async (clause) => {
+    const filter = base.concat([clause]).join(" and ");
+    const path = `Property?$filter=${encodeURIComponent(filter)}&$top=${top}` +
+                 (select  ? `&$select=${encodeURIComponent(select)}`   : "") +
+                 (orderby ? `&$orderby=${encodeURIComponent(orderby)}` : "");
+    const r = await odata(path);
+    return r.value || [];
+  };
+
+  /* What to ask about depends on the operator, and getting this backwards
+     costs real results.
+
+     With contains(), the BROADEST ask is the best one: "BOULDER" matches the
+     street "BOULDER LAKE" and the MLS returns a handful of rows, which the
+     local pass then narrows to exactly what was typed. Recall from the server,
+     precision here.
+
+     With eq, the opposite: only a whole field value can match, so the longest
+     phrase goes first and shorter runs follow. "BOULDER LAKE VESTAVIA HILLS"
+     equals no field, but "BOULDER LAKE" equals a StreetName. */
+  const askWords = parsed.words.length ? parsed.words : parsed.needles;
+  const phrase = askWords.join(" ");
+  const byLength = askWords.slice().sort((a, b) => b.length - a.length);
+  const terms = (caps.contains || caps.startswith)
+    ? [byLength[0], phrase, ...byLength.slice(1)]
+    : phraseCandidates(askWords, 3, 6);
+  const wanted = [...new Set(terms.filter(Boolean))];
+  const uniqueTerms = wanted.slice(0, TERMS_MAX);
+  let termsTruncated = wanted.length > uniqueTerms.length;
+  let hitDeadline = false;
+
+  const seen = new Map();
+  const notes = [];
+  let saturated = false, issued = 0, failedQueries = 0;
+
+  for (const term of uniqueTerms) {
+    if (!term) continue;
+
+    /* The reliable path: one small question per field, all at once. Every
+       usable field is asked — truncating this list is how a search for
+       "Liberty Park" missed the subdivision it was named after. */
+    const picked = fields.filter(f => f !== "PostalCode" || /^\d+$/.test(term));
+    const settled = await Promise.allSettled(picked.map(f => run(match(f, term))));
+    settled.forEach((res, i) => {
+      issued++;
+      if (res.status === "fulfilled") {
+        res.value.forEach(r => seen.set(r.ListingKey, r));
+        if (res.value.length >= top) saturated = true;
+        notes.push(`${picked[i]}:${term}:${res.value.length}`);
+      } else {
+        failedQueries++;
+        notes.push(`${picked[i]}:${term}:FAILED`);
       }
-    }
-    if (alts.length) parts.push("(" + alts.join(" or ") + ")");
+    });
+    /* Only stop once a term has produced a row that actually SURVIVES the
+       local AND-pass. "liberty park hoover" hits on "LIBERTY" via
+       SubdivisionName, but no single row carries both the subdivision and that
+       city — stopping there reported a confident "no match" for a query we had
+       barely begun. */
+    if (keep ? [...seen.values()].some(keep) : seen.size) break;
+    /* Stop early rather than risk the function's 60s ceiling. */
+    if (Date.now() - startedAt > FANOUT_DEADLINE_MS) { notes.push("deadline"); hitDeadline = true; break; }
   }
 
-  /* Nothing the server will accept. Return null so the caller switches to a
-     window and decides locally, rather than sending a query that 500s. */
-  return parts.length ? parts.join(" and ") : null;
+  /* Every query we sent failed: that is an outage, not an empty result. Before
+     this, a total MLS failure rendered as a clean "no listings match". */
+  const allFailed = issued > 0 && failedQueries === issued;
+  /* Only true when we STOPPED EARLY — the deadline fired, or there were more
+     phrasings to try than we were willing to ask about. Having asked
+     everything and found nothing is a real miss, and saying otherwise made
+     this flag constant and therefore worthless. */
+  const exhaustedTerms = !allFailed && (hitDeadline || termsTruncated);
+  return { rows: [...seen.values()], saturated, notes, incomplete, allFailed, exhaustedTerms };
+}
+
+/* ---------- the local pass checks EVERYTHING the visitor asked for ----------
+   Not just the words. A review on 2026-09-14 found that a word search threw
+   away price, bedroom and bathroom filters entirely: they lived in `droppable`,
+   the fan-out never sent them, and nothing re-checked them here. A visitor
+   asking for 5-bed homes over $800k in Hoover got every Hoover listing at every
+   price, with no notice. That is the original bug in miniature, so every
+   predicate now has a local twin and they are applied together. */
+function rowMatchesAll(row, p, parsed) {
+  if (!rowMatchesText(row, parsed)) return false;
+  if (p.type && TYPE_MATCH[p.type] && !rowMatchesType(row, p.type)) return false;
+
+  const price = Number(row.ListPrice);
+  const min = num(p.minPrice), max = num(p.maxPrice);
+  if (min && !(price >= min)) return false;
+  if (max && !(price <= max)) return false;
+  if (p.luxury === "1" && !(price >= LUXURY_FLOOR)) return false;
+
+  const beds = num(p.beds), baths = num(p.baths);
+  if (beds  && !(Number(row.BedroomsTotal) >= beds)) return false;
+  if (baths) {
+    /* Mirror mapBaths(): a card showing "3 baths" from BathroomsFull/Half must
+       not be thrown out because BathroomsTotalInteger happens to be null. */
+    const shown = mapBaths(row);
+    if (!(Number(shown) >= baths)) return false;
+  }
+
+  if (p.newConstruction === "1" && row.NewConstructionYN !== true) return false;
+  return true;
+}
+
+/* Sorting has to be redone locally whenever rows came from more than one query:
+   merging three separately-sorted lists does not give one sorted list. */
+function sortRows(rows, orderby) {
+  if (!orderby) return rows;
+  const [field, dir] = String(orderby).split(" ");
+  const sign = dir === "desc" ? -1 : 1;
+  return rows.slice().sort((a, b) => {
+    const x = a[field], y = b[field];
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return x === y ? 0 : (x > y ? sign : -sign);
+  });
 }
 
 /* The local half: the MLS narrows, this decides. Every word the visitor typed
@@ -564,7 +747,8 @@ async function buildClauses(p, agentId) {
   const required  = [];
   const essential = [];
   const droppable = [];
-  let parsed = null, localOnlyText = false, localOnlyType = false;
+  let parsed = null, localOnlyText = false, localOnlyType = false, fanoutText = false;
+  let textClauseUsed = null, unreadableQuery = false;
 
   required.push("(StandardStatus eq 'Active' or StandardStatus eq 'Pending')");
 
@@ -576,19 +760,39 @@ async function buildClauses(p, agentId) {
   const wantId = String(p.id || "").trim();
   if (wantId) {
     required.push(`ListingKey eq ${q(wantId)}`);
-    return { required, essential, droppable, parsed, localOnlyText, localOnlyType };
+    return { required, essential, droppable, parsed, localOnlyText, localOnlyType, fanoutText, textClauseUsed, unreadableQuery };
   }
 
   if (p.scope !== "all" && agentId) {
     required.push(`(ListAgentMlsId eq ${q(agentId)} or CoListAgentMlsId eq ${q(agentId)})`);
   }
 
-  if (p.q && String(p.q).trim()) {
-    parsed = parseQuery(p.q);
-    if (parsed.tokens.length) {
-      const clause = await textClause(parsed);
-      if (clause) essential.push(clause);
-      else localOnlyText = true;   // MLS cannot narrow it; we match every row here
+  if (one(p.q) && String(one(p.q)).trim()) {
+    parsed = parseQuery(one(p.q));
+    /* Something was typed but nothing searchable came out of it — "!!!", a
+       non-Latin script, single letters. Falling through here meant no clause
+       was built and the endpoint answered with page one of the entire MLS.
+       That is the original bug, so it now returns nothing and says why. */
+    if (!parsed.needles.length) {
+      unreadableQuery = true;
+      parsed = null;
+    } else if (parsed.tokens.length) {
+      /* A word search is run by textSearchRows() as several small parallel
+         queries, because this server refuses a filter with more than one
+         contains() in it. Everything else — MLS number, zip, house number —
+         is a single proven clause and goes through the normal path. */
+      /* needles, not words: "cove" and "point" are street-type words that carry
+         no weight when guessing a street name, but they are perfectly good
+         things to search for and must still reach the fan-out. */
+      const searchable = parsed.words.length ||
+        (parsed.needles.length && !parsed.streetNumber && !parsed.zip);
+      if (searchable && !parsed.mlsNumber && !parsed.streetNumber) {
+        fanoutText = true;
+      } else {
+        const clause = await textClause(parsed);
+        if (clause) { essential.push(clause); textClauseUsed = clause; }
+        else localOnlyText = true;
+      }
     } else {
       parsed = null;
     }
@@ -609,11 +813,16 @@ async function buildClauses(p, agentId) {
 
   const beds = num(p.beds), baths = num(p.baths);
   if (beds)  droppable.push(`BedroomsTotal ge ${beds}`);
-  if (baths) droppable.push(`BathroomsTotalInteger ge ${baths}`);
+  /* Some rows leave BathroomsTotalInteger null and carry the count in
+     BathroomsFull instead — mapBaths() already falls back to it for display, so
+     the filter has to as well, or a card showing "3 baths" gets excluded by a
+     2-bath search. */
+  if (baths) droppable.push(
+    `(BathroomsTotalInteger ge ${baths} or BathroomsFull ge ${baths})`);
 
   if (p.newConstruction === "1") essential.push("NewConstructionYN eq true");
 
-  return { required, essential, droppable, parsed, localOnlyText, localOnlyType };
+  return { required, essential, droppable, parsed, localOnlyText, localOnlyType, fanoutText, textClauseUsed, unreadableQuery };
 }
 
 /* GALMLS has a history of 500-ing on filter shapes that look perfectly legal,
@@ -642,7 +851,7 @@ function buildAttempts({ required, essential, droppable }, { top, skip, orderby,
     attempts.push({ path: base + sortPart,              filter, dropped: drop, shape: "sort" });
     attempts.push({ path: base + selectPart,            filter, dropped: drop, shape: "select" });
     attempts.push({ path: base,                         filter, dropped: drop, shape: "bare" });
-    if (attempts.length >= MAX_ATTEMPTS) return attempts.slice(0, MAX_ATTEMPTS);
+    if (drop >= MAX_LEVELS && drop < droppable.length) continue;
   }
   return attempts;
 }
@@ -860,6 +1069,7 @@ export default async function handler(req, res) {
 
     let clauses = null, windowMode = false, localFiltered = null;
     let usedFilter = null, escalated = false, windowSaturated = false, searchLimited = false;
+    let fanoutNotes = null;
 
     if (p.openHouse === "1") {
       const t0 = Date.now();
@@ -877,13 +1087,68 @@ export default async function handler(req, res) {
          MLS would page the wrong set: ask for one large window instead, sift
          it, and page within the result. A search that the MLS *can* narrow
          exactly (city, zip, MLS number, subdivision) pages normally. */
-      windowMode = isSearch && Boolean(
-        clauses.localOnlyText || clauses.localOnlyType ||
-        (clauses.parsed && clauses.parsed.streetNumber)
+      /* A bare five-digit zip is an exact PostalCode clause and pages through
+         the MLS normally. Forcing it into a 300-row window capped the most
+         common IDX search on the site at the 300 newest listings. Only a house
+         number WITH a street name needs the window, because there the street
+         is decided locally. */
+      const zipOnly = clauses.parsed && clauses.parsed.numberMayBeZip &&
+                      !clauses.parsed.words.length;
+      windowMode = isSearch && !clauses.unreadableQuery && Boolean(
+        clauses.localOnlyText || clauses.localOnlyType || clauses.fanoutText ||
+        (clauses.parsed && clauses.parsed.streetNumber && !zipOnly)
       );
 
       const top  = windowMode ? WINDOW_TOP : pageSize;
       const skip = windowMode ? 0 : (isSearch ? (page - 1) * pageSize : 0);
+
+      if (clauses.unreadableQuery) {
+        rows = []; total = 0; usedAttempt = 0; usedShape = "unreadable";
+        searchLimited = true;
+        mark("listingQuery", t0);
+      } else if (clauses.fanoutText) {
+        /* Several small parallel queries, merged. One filter naming every field
+           is refused by this server; one field at a time is not. */
+        /* Previously this passed essential[last] and called it "the type
+           clause". It was whatever happened to be last — so `?q=hoover&luxury=1`
+           sent the luxury clause as the type, and `&luxury=1&newConstruction=1`
+           dropped luxury on the floor. All of them travel now. */
+        try {
+          /* Try with every refinement, then without the droppable ones. In the
+             fan-out these used to travel with no ladder at all, so a single
+             clause the MLS disliked turned "show me Hoover under $400k" into a
+             hard outage instead of broader results. */
+          let out = await textSearchRows(clauses.parsed, {
+            required: clauses.required,
+            extra: clauses.essential.concat(clauses.droppable),
+            top, orderby, select: selectFor(isSearch),
+            keep: (r) => rowMatchesAll(r, p, clauses.parsed)
+          });
+          if (out.allFailed && clauses.droppable.length) {
+            out = await textSearchRows(clauses.parsed, {
+              required: clauses.required,
+              extra: clauses.essential,
+              top, orderby, select: selectFor(isSearch),
+              keep: (r) => rowMatchesAll(r, p, clauses.parsed)
+            });
+            if (!out.allFailed) droppedFilters = clauses.droppable.length;
+          }
+          rows = out.rows;
+          fanoutNotes = out.notes;
+          windowSaturated = out.saturated;
+          if (out.allFailed) {
+            searchUnavailable = true;
+            rows = [];
+          } else if (!rows.length && (out.incomplete || out.exhaustedTerms)) {
+            searchLimited = true;
+          }
+          usedAttempt = 0;
+          usedShape = "fanout";
+        } catch (err) {
+          attempts.push("fanout: " + err.message.slice(0, 120));
+        }
+        mark("listingQuery", t0);
+      } else {
 
       const plan = buildAttempts(clauses, { top, skip, orderby, select: selectFor(isSearch) });
 
@@ -924,6 +1189,14 @@ export default async function handler(req, res) {
           throw new Error("ODATA every filter variant failed :: " + attempts.join(" | "));
         }
       }
+      }
+
+      /* A fan-out that could not run at all is an outage, not an empty result. */
+      if (clauses.fanoutText && usedAttempt === -1) {
+        searchUnavailable = true;
+        rows = [];
+        total = 0;
+      }
 
       /* ZERO-RESULT ESCALATION.
          The precise query is built from eq, which only fires when the visitor's
@@ -932,12 +1205,15 @@ export default async function handler(req, res) {
          than tell them it does not exist, widen to a window and let the local
          pass decide. Costs one extra round trip, and only when the precise
          query found nothing. */
-      if (isSearch && !searchUnavailable && !windowMode && clauses.parsed &&
-          rows.length === 0 && usedAttempt !== -1) {
+      if (isSearch && !searchUnavailable && !windowMode && !clauses.fanoutText &&
+          clauses.parsed && rows.length === 0 && usedAttempt !== -1) {
         try {
-          const wideFilter = [...clauses.required,
-                              ...(p.type && !clauses.localOnlyType
-                                    ? clauses.essential.slice(-1) : [])].join(" and ");
+          /* Carry everything except the text clause, which is the part that
+             found nothing. Dropping price here is how "$5M homes in 35242"
+             came back full of $300k houses. */
+          const keep = clauses.essential.filter(c => c !== clauses.textClauseUsed)
+                                        .concat(clauses.droppable);
+          const wideFilter = [...clauses.required, ...keep].join(" and ");
           const r2 = await odata(
             `Property?$filter=${encodeURIComponent(wideFilter)}&$top=${WINDOW_TOP}` +
             `&$select=${encodeURIComponent(selectFor(true))}` +
@@ -963,14 +1239,18 @@ export default async function handler(req, res) {
          mode — outside it the MLS clause is already exact, and stripping rows
          after the MLS has paged would make the pager skip listings and
          mis-number the results. */
-      if (isSearch && !searchUnavailable && windowMode) {
+      /* Runs whenever rows came back looser than what was typed — including on
+         agent scope, which used to skip this entirely and return "any listing
+         matching any one word on any field". */
+      if (!searchUnavailable && clauses && (windowMode || clauses.fanoutText) &&
+          (clauses.parsed || clauses.localOnlyType)) {
         const before = rows.length;
         const t1 = Date.now();
-        windowSaturated = before >= WINDOW_TOP;
-        rows = rows.filter(r =>
-          rowMatchesText(r, clauses.parsed) &&
-          (!p.type || !TYPE_MATCH[p.type] || rowMatchesType(r, p.type))
-        );
+        if (!windowSaturated) windowSaturated = before >= WINDOW_TOP;
+        rows = rows.filter(r => rowMatchesAll(r, p, clauses.parsed));
+        /* Merging several per-field queries destroys the server's ordering, so
+           the sort is redone here before anything is paged. */
+        rows = sortRows(rows, orderby);
         localFiltered = { before, after: rows.length };
         mark("localMatch", t1);
       }
@@ -983,7 +1263,7 @@ export default async function handler(req, res) {
          house-number search is different: `StreetNumber eq '4413'` returns
          every 4413 in Alabama, so finding no Boulder Lake among them really is
          proof, and that case must still say a plain "no match". */
-      if (windowMode && rows.length === 0 && clauses &&
+      if (!searchUnavailable && windowMode && rows.length === 0 && clauses &&
           (clauses.localOnlyText || escalated)) {
         searchLimited = true;
       }
@@ -1012,7 +1292,13 @@ export default async function handler(req, res) {
        window came back full there may be more beyond it, so the number stops
        being a true total and the page must not present it as one. */
     const countKnown = (total != null) && !(windowMode && windowSaturated);
-    if (!countKnown) total = skipForPager + listings.length + (listings.length === pageSize ? pageSize : 0);
+    /* Only invent a number when there genuinely is none. A windowed search has
+       counted exactly what it found; overwriting that with
+       skip + returned + pageSize showed "72 properties" for a city with
+       thousands. countKnown stays false so the page says "or more". */
+    if (total == null) {
+      total = skipForPager + listings.length + (listings.length === pageSize ? pageSize : 0);
+    }
     const hasMore = isSearch ? skipForPager + listings.length < total : false;
 
     /* What the page needs in order to tell the truth:
@@ -1033,13 +1319,13 @@ export default async function handler(req, res) {
         hasMore,
         droppedFilters,
         searchUnavailable, searchApplied, windowed: windowMode,
-        escalated, windowSaturated, searchLimited, usedFilter,
+        escalated, windowSaturated, searchLimited, usedFilter, fanoutNotes,
         parsed: clauses ? clauses.parsed : null,
         essentialClauses: clauses ? clauses.essential : null,
         localOnly: clauses ? { text: clauses.localOnlyText, type: clauses.localOnlyType } : null,
         localFiltered,
         mlsStringSupport: caps ? { contains: caps.contains, startswith: caps.startswith } : null,
-        mlsFilterableFields: _fields ? { usable: _fields.usable, rejected: _fields.rejected } : 'probing',
+        mlsFilterableFields: _probe ? { usable: _probe.usable, rejected: _probe.rejected, operator: _probe.op } : 'probing',
         vocabulary: vocab,
         usedAttempt, usedShape,
         attempts,
@@ -1052,7 +1338,10 @@ export default async function handler(req, res) {
     }
 
     /* A failed search must not be cached like a good answer. */
-    res.setHeader("Cache-Control", searchUnavailable
+    /* A degraded answer must not outlive the outage that caused it. Caching a
+       searchLimited empty result for three hours kept a bad answer alive long
+       after the MLS recovered. */
+    res.setHeader("Cache-Control", (searchUnavailable || searchLimited)
       ? "public, max-age=0, must-revalidate"
       : `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS * 2}`);
 

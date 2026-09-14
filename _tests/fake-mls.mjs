@@ -1,7 +1,7 @@
 /* A stand-in for Greater Alabama MLS that behaves like the real one:
    it answers HTTP 500 to any $filter containing contains( or startswith(,
    which is the measured behaviour that caused the bug. */
-export function makeFakeMls(rows, { supportsContains = false, failEverything = false, poisonFields = [] } = {}) {
+export function makeFakeMls(rows, { supportsContains = false, failEverything = false, poisonFields = [], maxContains = Infinity } = {}) {
   const calls = [];
   return {
     calls,
@@ -17,6 +17,12 @@ export function makeFakeMls(rows, { supportsContains = false, failEverything = f
       const qs = new URL(u).searchParams;
       const filter = qs.get("$filter") || "";
       if (!supportsContains && /contains\(|startswith\(/.test(filter)) {
+        return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
+      }
+      /* Measured on GALMLS 2026-09-14: ONE contains() is answered fine, but a
+         filter with several of them OR'd together is refused outright, in under
+         a second — the server rejecting the shape, not timing out. */
+      if ((filter.match(/contains\(/g) || []).length > maxContains) {
         return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
       }
       /* The real GALMLS behaviour found 2026-09-14: naming certain fields in a

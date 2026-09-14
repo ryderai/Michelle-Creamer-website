@@ -1,5 +1,13 @@
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
+const NOISE_WORDS = new Set([
+  "N","S","E","W","NE","NW","SE","SW","NORTH","SOUTH","EAST","WEST",
+  "UNIT","APT","STE","SUITE","#","AL","ALABAMA","USA","US"
+]);
+
+/* Street-type words. Dropped when guessing a street name, because "CIR" and
+   "CIRCLE" are the same street — but KEPT as searchable words, because "Cove",
+   "Point" and "Trail" are real Alabama place names somebody will type. */
 const STREET_SUFFIXES = new Set([
   "ST","STREET","RD","ROAD","DR","DRIVE","LN","LANE","AVE","AVENUE","AV",
   "CIR","CIRCLE","CT","COURT","BLVD","BOULEVARD","WAY","PL","PLACE","PT","POINT",
@@ -20,13 +28,27 @@ function parseQuery(raw) {
     out.mlsNumber = tokens[0]; out.needles = [tokens[0]]; return out;
   }
 
+  /* A lone number is a house number worth asking about — "4413" used to fall
+     through to a word search and never reach StreetNumber at all. */
+  if (tokens.length === 1 && /^\d{1,6}[A-Z]?$/.test(tokens[0])) {
+    out.streetNumber = tokens[0].replace(/[^0-9]/g, "");
+    out.numberMayBeZip = /^\d{5}$/.test(out.streetNumber);
+    /* Five digits alone is far more often a zip than a house number, but it can
+       be either, so it stays both and the MLS is asked about both. */
+    if (out.numberMayBeZip) out.zip = out.streetNumber;
+    out.needles = [out.streetNumber];
+    return out;
+  }
+
   let rest = tokens.slice();
   if (/^\d{1,6}[A-Z]?$/.test(rest[0]) && rest.length > 1) {
     out.streetNumber = rest[0].replace(/[^0-9]/g, "");
     /* "35242 Kenmore" is a zip plus a street, but "35242 Old Highway 31" is a
-       house number. Five digits is genuinely ambiguous, so ask the MLS about
-       both and let the local pass settle it. */
+       house number. Five digits is genuinely ambiguous, so it is recorded as
+       BOTH and the MLS is asked about both. Recording only streetNumber meant
+       a leading zip was never searched as a zip at all. */
     out.numberMayBeZip = /^\d{5}$/.test(out.streetNumber);
+    if (out.numberMayBeZip) out.zip = out.streetNumber;
     rest = rest.slice(1);
   }
 
@@ -41,11 +63,15 @@ function parseQuery(raw) {
      are real place names), the search must still mean something. Before
      Sep 13 2026 this filtered twice with the same predicate, so a suffix-only
      query ended up with no needles at all and matched every listing. */
-  out.words = rest.filter(w => w.length > 1 && !STREET_SUFFIXES.has(w) && w !== zipTok);
+  out.words = rest.filter(w =>
+    w.length > 1 && !STREET_SUFFIXES.has(w) && !NOISE_WORDS.has(w) && w !== zipTok);
+  /* The fallback must not re-admit the noise words, and must not admit
+     single letters: needles of ["A","B"] match nearly every listing, which is
+     the whole-market dump wearing a disguise. */
+  const fallback = rest.filter(w => w.length > 1 && !NOISE_WORDS.has(w));
   out.needles = [out.streetNumber, out.zip]
-    .concat(out.words.length ? out.words : rest.filter(w => w.length > 1))
+    .concat(out.words.length ? out.words : fallback)
     .filter(Boolean);
-  if (!out.needles.length) out.needles = tokens.slice();
   return out;
 }
 
