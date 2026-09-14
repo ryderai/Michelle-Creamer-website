@@ -1,7 +1,7 @@
 /* A stand-in for Greater Alabama MLS that behaves like the real one:
    it answers HTTP 500 to any $filter containing contains( or startswith(,
    which is the measured behaviour that caused the bug. */
-export function makeFakeMls(rows, { supportsContains = false, failEverything = false } = {}) {
+export function makeFakeMls(rows, { supportsContains = false, failEverything = false, poisonFields = [] } = {}) {
   const calls = [];
   return {
     calls,
@@ -17,6 +17,12 @@ export function makeFakeMls(rows, { supportsContains = false, failEverything = f
       const qs = new URL(u).searchParams;
       const filter = qs.get("$filter") || "";
       if (!supportsContains && /contains\(|startswith\(/.test(filter)) {
+        return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
+      }
+      /* The real GALMLS behaviour found 2026-09-14: naming certain fields in a
+         $filter 500s the WHOLE query, whatever the operator and however sound
+         the rest of it is. */
+      if (poisonFields.some(f => new RegExp("\\b" + f + "\\b").test(filter))) {
         return { ok: false, status: 500, text: async () => '{"error":{"code":500}}' };
       }
       if (u.includes("OpenHouse?")) {

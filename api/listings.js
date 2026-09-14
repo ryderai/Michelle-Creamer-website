@@ -239,6 +239,63 @@ async function measureCaps() {
   return _caps;
 }
 
+/* ---------- which FIELDS will this server filter on? ----------
+   Sep 14 2026, measured on the live feed. The first fix assumed the fault was
+   the contains() function. It is not: `contains(City,'HOOVER')` and
+   `startswith(City,'HOOVER')` both work. What actually happens is that GALMLS
+   answers HTTP 500 when a $filter mentions certain FIELDS at all, whatever the
+   operator — and one poisoned field 500s the whole query, including the parts
+   that were fine. That is why a four-way OR across City / PostalCode /
+   UnparsedAddress / SubdivisionName failed even though two of those four are
+   perfectly filterable.
+
+   PROVEN GOOD (measured through the live endpoint):
+     ListingKey, ListingId, PostalCode, StreetNumber, StreetNumber,
+     PropertyType, PropertySubType, ListPrice, BedroomsTotal, StandardStatus,
+     City (contains + startswith both answered 200)
+   UNKNOWN, and therefore probed here rather than guessed:
+     UnparsedAddress, SubdivisionName, StreetName
+
+   So the server is asked, once per warm instance, which of the doubtful fields
+   it will accept, and only the survivors are ever used. If Paragon fixes a
+   field later it starts being used automatically; if they break another one,
+   this degrades instead of returning a screen of wrong houses. */
+
+const TEXT_FIELDS_SAFE   = ["City", "PostalCode"];        // measured working
+const TEXT_FIELDS_DOUBTED = ["UnparsedAddress", "SubdivisionName", "StreetName"];
+
+let _fields = null;
+let _fieldsInFlight = null;
+const FIELDS_TTL = 30 * 60 * 1000;
+
+async function measureFields() {
+  const base = "(StandardStatus eq 'Active' or StandardStatus eq 'Pending')";
+  const caps = _caps || CAPS_OFF;
+  const probeOne = async (f) => {
+    /* A value that matches nothing keeps the query cheap — we are asking
+       "will you accept this field", not "what matches". */
+    const clause = caps.contains   ? `contains(${f},'ZQXJV')`
+                 : caps.startswith ? `startswith(${f},'ZQXJV')`
+                 :                   `${f} eq 'ZQXJV'`;
+    try {
+      await odata(`Property?$filter=${encodeURIComponent(base + " and " + clause)}&$top=1`);
+      return true;
+    } catch { return false; }
+  };
+  const results = await Promise.all(TEXT_FIELDS_DOUBTED.map(probeOne));
+  const usable = TEXT_FIELDS_SAFE.concat(TEXT_FIELDS_DOUBTED.filter((f, i) => results[i]));
+  _fields = { usable, rejected: TEXT_FIELDS_DOUBTED.filter((f, i) => !results[i]), at: Date.now() };
+  return _fields;
+}
+
+/* Non-blocking, exactly like stringCaps(): a request never waits on the probe.
+   Until it answers we use only the fields already proven to work. */
+function textFields() {
+  if (_fields && Date.now() < _fields.at + FIELDS_TTL) return _fields.usable;
+  if (!_fieldsInFlight) _fieldsInFlight = measureFields().finally(() => { _fieldsInFlight = null; });
+  return TEXT_FIELDS_SAFE;
+}
+
 /* ---------- the MLS's own vocabulary ----------
    We cannot ask the MLS for "subtype contains Condo", but we can pull a sample
    of what it actually stores and do the substring match HERE, then send back
@@ -390,14 +447,17 @@ function rowText(row) {
    when stringCaps() has measured them working. Returns null when the MLS
    cannot usefully narrow it, and the local pass does the whole job. */
 async function textClause(parsed) {
+  /* Proven fields only — these two never 500 and settle the two most common
+     searches outright. */
   if (parsed.mlsNumber)
     return `(ListingKey eq ${q(parsed.mlsNumber)} or ListingId eq ${q(parsed.mlsNumber)})`;
 
-  const caps = await stringCaps();
-  const like = (field, value) =>
+  const caps   = await stringCaps();
+  const fields = textFields();
+  const match  = (field, value) =>
       caps.contains   ? `contains(${field},${q(value)})`
     : caps.startswith ? `startswith(${field},${q(value)})`
-    : null;
+    :                   `${field} eq ${q(value)}`;
 
   /* A house number is exact, indexed, and cuts 12,600 rows to a handful.
      Street SUFFIX spellings vary too much to filter on ("CIR" vs "CIRCLE"),
@@ -410,32 +470,37 @@ async function textClause(parsed) {
 
   /* A zip on its own is exact and cheap.
 
-     KNOWN LIMIT: a row stored as ZIP+4 ("35242-1177") will not match
-     PostalCode eq '35242', and eq is the only string comparison this server
-     accepts. Measured against the live feed on 2026-09-13: 0 of 288 rows store
-     ZIP+4, so this does not occur in GALMLS today. Such a row is still
-     reachable by street name or full address. If Paragon ever enables
-     startswith(), the like() below fixes it automatically with no code change
-     — that is why the probe exists. */
+     KNOWN LIMIT: with eq alone a ZIP+4 row ("35242-1177") would not match
+     PostalCode eq '35242'. Measured on the live feed 2026-09-13: 0 of 288 rows
+     store ZIP+4. Where the server accepts contains() — it does today — the
+     match() below covers it anyway. */
   if (parsed.zip && !parsed.words.length) {
-    const z = [`PostalCode eq ${q(parsed.zip)}`, like("PostalCode", parsed.zip)].filter(Boolean);
+    const z = [`PostalCode eq ${q(parsed.zip)}`];
+    if (caps.contains || caps.startswith) z.push(match("PostalCode", parsed.zip));
     return "(" + z.join(" or ") + ")";
   }
 
   const parts = [];
   if (parsed.zip) parts.push(`PostalCode eq ${q(parsed.zip)}`);
 
+  /* The whole phrase first, then shorter runs. Only fields this server has
+     agreed to filter on are named — one poisoned field 500s the entire query,
+     including the parts that were fine, which is the fault that survived the
+     first fix. */
   const cands = phraseCandidates(parsed.words);
-  if (cands.length) {
+  if (cands.length && fields.length) {
     const alts = [];
     for (const c of cands) {
-      alts.push(`City eq ${q(c)}`, `StreetName eq ${q(c)}`, `SubdivisionName eq ${q(c)}`);
-      const f = like("UnparsedAddress", c);
-      if (f) alts.push(f);
+      for (const f of fields) {
+        if (f === "PostalCode" && !/^\d+$/.test(c)) continue;   // pointless on words
+        alts.push(match(f, c));
+      }
     }
-    parts.push("(" + alts.join(" or ") + ")");
+    if (alts.length) parts.push("(" + alts.join(" or ") + ")");
   }
 
+  /* Nothing the server will accept. Return null so the caller switches to a
+     window and decides locally, rather than sending a query that 500s. */
   return parts.length ? parts.join(" and ") : null;
 }
 
@@ -794,7 +859,7 @@ export default async function handler(req, res) {
     const mark = (k, from) => { t[k] = Date.now() - from; };
 
     let clauses = null, windowMode = false, localFiltered = null;
-    let usedFilter = null, escalated = false, windowSaturated = false;
+    let usedFilter = null, escalated = false, windowSaturated = false, searchLimited = false;
 
     if (p.openHouse === "1") {
       const t0 = Date.now();
@@ -910,6 +975,19 @@ export default async function handler(req, res) {
         mark("localMatch", t1);
       }
 
+      /* When the MLS would not narrow the search at all, we only sifted the
+         most recent WINDOW_TOP listings. Finding nothing there is not proof the
+         property is absent, and must not be reported as "no match" — that is
+         the mistake that made a live listing look deleted. */
+      /* Only a window drawn from the WHOLE market is untrustworthy. A
+         house-number search is different: `StreetNumber eq '4413'` returns
+         every 4413 in Alabama, so finding no Boulder Lake among them really is
+         proof, and that case must still say a plain "no match". */
+      if (windowMode && rows.length === 0 && clauses &&
+          (clauses.localOnlyText || escalated)) {
+        searchLimited = true;
+      }
+
       if (windowMode) {
         const all = rows;
         total = all.length;
@@ -955,12 +1033,13 @@ export default async function handler(req, res) {
         hasMore,
         droppedFilters,
         searchUnavailable, searchApplied, windowed: windowMode,
-        escalated, windowSaturated, usedFilter,
+        escalated, windowSaturated, searchLimited, usedFilter,
         parsed: clauses ? clauses.parsed : null,
         essentialClauses: clauses ? clauses.essential : null,
         localOnly: clauses ? { text: clauses.localOnlyText, type: clauses.localOnlyType } : null,
         localFiltered,
         mlsStringSupport: caps ? { contains: caps.contains, startswith: caps.startswith } : null,
+        mlsFilterableFields: _fields ? { usable: _fields.usable, rejected: _fields.rejected } : 'probing',
         vocabulary: vocab,
         usedAttempt, usedShape,
         attempts,
@@ -989,6 +1068,7 @@ export default async function handler(req, res) {
          visitor rather than quietly showing them the wrong results. */
       droppedFilters,
       searchUnavailable,
+      searchLimited,
       searchApplied,
       windowed: windowMode,
       truncated: Boolean(windowMode && windowSaturated),

@@ -522,6 +522,10 @@ function initServerGrid(grid) {
     if (data.searchUnavailable) {
       emptyMsg = "The MLS could not run that search just now. Please try again in a moment, " +
                  "or browse by price and property type below.";
+    } else if (data.searchLimited) {
+      emptyMsg = "We could only check the most recently updated listings for “" + esc(typed) + "”. " +
+                 "The MLS would not run a full search on that. Try a zip code, an MLS number, " +
+                 "or a street number with the street name.";
     } else if (typed) {
       emptyMsg = "Nothing in the Greater Alabama MLS matches “" + esc(typed) + "” right now. " +
                  "Check the spelling, try just the street name or the city, or search by MLS number.";
@@ -531,7 +535,8 @@ function initServerGrid(grid) {
       ? list.map(listingCard).join("")
       : emptyState(emptyMsg, data.searchUnavailable
           ? "Search is temporarily unavailable"
-          : (typed ? "No match for \u201C" + esc(typed) + "\u201D" : null));
+          : (data.searchLimited ? "Could not search the full MLS"
+             : (typed ? "No match for \u201C" + esc(typed) + "\u201D" : null)));
 
     /* The count has to describe THIS result, not the size of the market. When
        a search failed there is no honest number to show at all. */
@@ -570,6 +575,10 @@ function initServerGrid(grid) {
       } else if (data.droppedFilters) {
         msg = "The MLS could not apply some of the extra filters, so these results are broader " +
               "than you asked for.";
+      } else if (data.searchLimited) {
+        msg = "The MLS would not run a full search for that term, so only the most recently " +
+              "updated listings were checked. A zip code or an MLS number will search everything.";
+        tone = "error";
       } else if (data.truncated) {
         msg = "That search matches more listings than we can show at once. These are the most " +
               "recently updated matches — add a city, a zip or a price range to narrow it down.";

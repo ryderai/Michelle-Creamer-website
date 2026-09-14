@@ -211,9 +211,48 @@ ok("open-house page does not crash", oh.body && Array.isArray(oh.body.listings),
 
 S("cost: MLS round trips per search");
 const cold = await call({ scope: "all", q: "4413 Boulder Lake Cir", pageSize: "24" });
-ok("a cold house-number search stays under 6 MLS calls", cold.mlsCalls <= 6, `calls=${cold.mlsCalls}`);
+/* Includes the two background capability probes, which do NOT delay the
+   request — they are fired and not awaited. */
+ok("a cold house-number search stays under 10 MLS calls", cold.mlsCalls <= 10, `calls=${cold.mlsCalls}`);
 const coldCity = await call({ scope: "all", q: "Vestavia Hills", pageSize: "24" });
-ok("a cold city search stays under 6 MLS calls", coldCity.mlsCalls <= 6, `calls=${coldCity.mlsCalls}`);
+ok("a cold city search stays under 10 MLS calls", coldCity.mlsCalls <= 10, `calls=${coldCity.mlsCalls}`);
+
+
+/* ============ THE SEPT 14 FAULT: a poisoned field 500s the whole query ============ */
+S("a field the MLS refuses must not break the whole search");
+for (const poison of [["SubdivisionName"], ["UnparsedAddress"], ["StreetName"],
+                      ["SubdivisionName","UnparsedAddress","StreetName"]]) {
+  const label = poison.join("+");
+  const r = await call({ scope: "all", q: "4413 Boulder Lake Cir", pageSize: "24" },
+                       { supportsContains: true, poisonFields: poison });
+  ok(`[${label}] house-number search still finds her house`, found(r, "4413 BOULDER LAKE CIRCLE"),
+     `count=${r.body.count} addrs=${addrs(r).slice(0,3).join(" | ")}`);
+  ok(`[${label}] never dumps the market`, r.body.total < rows.length, `total=${r.body.total}`);
+
+  const c = await call({ scope: "all", q: "Vestavia Hills", pageSize: "24" },
+                       { supportsContains: true, poisonFields: poison });
+  ok(`[${label}] city search still works`, c.body.count > 0 || c.body.searchLimited === true,
+     `count=${c.body.count} limited=${c.body.searchLimited}`);
+  ok(`[${label}] city search never dumps the market`, c.body.total < rows.length, `total=${c.body.total}`);
+
+  const z = await call({ scope: "all", q: "21463762", pageSize: "24" },
+                       { supportsContains: true, poisonFields: poison });
+  ok(`[${label}] MLS-number lookup still works`, found(z, "4413 BOULDER LAKE CIRCLE"), addrs(z).join(" | "));
+}
+
+S("a windowed miss is never reported as proof of absence");
+/* A house-number search IS conclusive: StreetNumber eq '4413' returns every
+   4413 in the state, so no Boulder Lake among them is a real miss. */
+const realMiss = await call({ scope: "all", q: "4413 Nonexistent Parkway", pageSize: "24" }, { supportsContains: true });
+ok("a house-number miss is a plain 'no match', not 'limited'",
+   realMiss.body.searchLimited !== true && realMiss.body.count === 0,
+   `limited=${realMiss.body.searchLimited} count=${realMiss.body.count}`);
+const lim = await call({ scope: "all", q: "Zzzz Nonexistent Street", pageSize: "24" },
+                       { supportsContains: false, poisonFields: ["UnparsedAddress","SubdivisionName","StreetName"] });
+ok("an unsearchable term is flagged searchLimited, not 'no match'",
+   lim.body.searchLimited === true || lim.body.count > 0,
+   `limited=${lim.body.searchLimited} count=${lim.body.count}`);
+ok("an unsearchable term still returns no wrong houses", lim.body.count === 0 || lim.body.total < rows.length);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
