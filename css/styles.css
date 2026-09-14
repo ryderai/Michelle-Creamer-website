@@ -395,6 +395,23 @@ section.tight { padding: clamp(48px, 6vw, 80px) 0; }
 .listing-toolbar select { flex: 0 1 auto; }
 .listing-toolbar input:focus, .listing-toolbar select:focus { border-color: var(--brass); box-shadow: 0 0 0 3px rgba(185,154,95,.18); }
 .results-count { font-size: 13px; color: var(--text-soft); margin-left: auto; padding-right: 6px; }
+/* Says out loud when a search could not be honoured, instead of quietly
+   showing listings the visitor did not ask for. Added 2026-09-13. */
+.listing-notice {
+  margin: 14px 0 0;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e4d3a8;
+  background: #fdf8ec;
+  color: #6b5420;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.listing-notice[data-tone="error"] { border-color: #e6c4c4; background: #fdf1f1; color: #7a3b3b; }
+@media (prefers-color-scheme: dark) {
+  .listing-notice { border-color: #5b4d2c; background: #2a2415; color: #e6d6ab; }
+  .listing-notice[data-tone="error"] { border-color: #6b3f3f; background: #2d1b1b; color: #eec9c9; }
+}
 .listing-empty {
   padding: clamp(48px, 6vw, 80px); text-align: center;
   background: var(--white); border: 1px dashed var(--line-strong); border-radius: var(--radius-lg);

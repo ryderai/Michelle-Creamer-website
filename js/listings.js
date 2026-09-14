@@ -404,10 +404,10 @@ function searchListings(list, q) {
   );
 }
 
-function emptyState(msg) {
+function emptyState(msg, heading) {
   return (
     '<div class="listing-empty" style="grid-column:1/-1">' +
-      "<h3>No matching properties right now</h3>" +
+      "<h3>" + (heading || "No matching properties right now") + "</h3>" +
       "<p>" + (msg || "Inventory moves fast in this market. Reach out and Michelle will let you know the moment something fits — including off-market opportunities.") + "</p>" +
       '<a class="btn brass" href="contact-me.html">Contact Michelle</a>' +
     "</div>"
@@ -500,22 +500,49 @@ function initServerGrid(grid) {
     let data = { listings: [], total: 0 };
     try {
       const res = await fetch(buildUrl());
-      data = await res.json();
+      data = await res.json().catch(() => ({ listings: [], total: 0 }));
+      /* A 502 from our own function, or a body we could not read, means the
+         MLS could not answer — NOT that the property does not exist. Saying
+         "no match" here is how a working listing looks deleted. */
+      if (!res.ok) data.searchUnavailable = true;
       if (data.generatedAt) { _feedGeneratedAt = data.generatedAt; stampFeedFreshness(); }
     } catch (err) {
       console.warn("[listings] search failed:", err);
+      data = { listings: [], total: 0, searchUnavailable: true };
     }
     if (ticket !== inFlight) return;         // a newer search already answered
 
+    const typed = searchBox ? searchBox.value.trim() : "";
     const list = (data.listings || []).map(normalizeListing);
     grid.removeAttribute("aria-busy");
+
+    /* Three different "nothing here" messages, because they mean three
+       different things and the visitor deserves to know which one they hit. */
+    let emptyMsg = grid.getAttribute("data-empty");
+    if (data.searchUnavailable) {
+      emptyMsg = "The MLS could not run that search just now. Please try again in a moment, " +
+                 "or browse by price and property type below.";
+    } else if (typed) {
+      emptyMsg = "Nothing in the Greater Alabama MLS matches “" + esc(typed) + "” right now. " +
+                 "Check the spelling, try just the street name or the city, or search by MLS number.";
+    }
+
     grid.innerHTML = list.length
       ? list.map(listingCard).join("")
-      : emptyState(grid.getAttribute("data-empty"));
+      : emptyState(emptyMsg, data.searchUnavailable
+          ? "Search is temporarily unavailable"
+          : (typed ? "No match for \u201C" + esc(typed) + "\u201D" : null));
 
+    /* The count has to describe THIS result, not the size of the market. When
+       a search failed there is no honest number to show at all. */
     if (countEl) {
-      countEl.textContent = (data.total || 0).toLocaleString("en-US") +
-        ((data.total === 1) ? " property" : " properties");
+      if (data.searchUnavailable) {
+        countEl.textContent = "Search unavailable";
+      } else {
+        const n = Number(data.total || 0);
+        countEl.textContent = n.toLocaleString("en-US") + (n === 1 ? " property" : " properties") +
+          (data.truncated ? " or more" : "");
+      }
     }
 
     if (!limit) {
@@ -530,13 +557,26 @@ function initServerGrid(grid) {
     }
 
     /* If the MLS refused part of the search we say so, rather than quietly
-       showing results that do not match what was typed. */
+       showing results that do not match what was typed. Before Sep 13 2026
+       this wrote into an element that did not exist on the page, so every
+       failed search looked like a successful one. */
     const warn = page.querySelector("[data-filter-warning]");
     if (warn) {
-      warn.textContent = data.droppedFilters
-        ? "Some of your filters could not be applied by the MLS, so these results are broader than you asked for."
-        : "";
-      warn.hidden = !data.droppedFilters;
+      let msg = "", tone = "warn";
+      if (data.searchUnavailable) {
+        msg = "We could not search the MLS for “" + typed + "” just now, so nothing is shown. " +
+              "This is a problem on our side, not a sign that the property is gone.";
+        tone = "error";
+      } else if (data.droppedFilters) {
+        msg = "The MLS could not apply some of the extra filters, so these results are broader " +
+              "than you asked for.";
+      } else if (data.truncated) {
+        msg = "That search matches more listings than we can show at once. These are the most " +
+              "recently updated matches — add a city, a zip or a price range to narrow it down.";
+      }
+      warn.textContent = msg;
+      warn.setAttribute("data-tone", tone);
+      warn.hidden = !msg;
     }
 
     if (window.observeReveals) window.observeReveals(grid);
