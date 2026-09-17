@@ -534,6 +534,28 @@ function initServerGrid(grid) {
 
   let pageNo = 1, inFlight = 0;
 
+  /* A search that comes up empty is still a dead end if the page shows
+     nothing else. A few of Michelle's own current listings go right below
+     the message instead, so there's always something to look at. Guarded
+     by both tickets: inFlight so a newer search wins, fallbackTicket so two
+     fallback fetches in a row don't both try to render. */
+  let fallbackTicket = 0;
+  async function renderFallbackListings(container, ticket) {
+    const myTicket = ++fallbackTicket;
+    const agentListings = await fetchListings("agent");
+    if (ticket !== inFlight || myTicket !== fallbackTicket) return;
+    const picks = sortListings(agentListings.filter((l) => l.status !== "sold"), "").slice(0, 3);
+    if (!picks.length) return;
+    container.insertAdjacentHTML(
+      "beforeend",
+      '<div class="listing-fallback-heading" style="grid-column:1/-1;margin-top:8px">' +
+        '<h3 style="font-size:19px">Some of Michelle’s current listings</h3></div>' +
+      picks.map(listingCard).join("")
+    );
+    if (window.observeReveals) window.observeReveals(container);
+    watchPhotoSlots(container);
+  }
+
   const pager = document.createElement("div");
   pager.className = "lc-pager-wrap";
   if (!limit) grid.insertAdjacentElement("afterend", pager);
@@ -601,27 +623,32 @@ function initServerGrid(grid) {
     const list = (data.listings || []).map(normalizeListing);
     grid.removeAttribute("aria-busy");
 
-    /* Three different "nothing here" messages, because they mean three
-       different things and the visitor deserves to know which one they hit. */
+    /* Three different "nothing here" reasons, because they mean three
+       different things and the visitor deserves to know which one they hit —
+       but every one of them now also offers a few of Michelle's current
+       listings right below, so a search that didn't work is never a dead end. */
     let emptyMsg = grid.getAttribute("data-empty");
+    let emptyHeading = null;
     if (data.searchUnavailable) {
-      emptyMsg = "The MLS could not run that search just now. Please try again in a moment, " +
-                 "or browse by price and property type below.";
+      emptyHeading = "Sorry, we couldn’t search just now";
+      emptyMsg = "This is a hiccup on our side, not a sign anything is wrong with the property. " +
+                 "Try again in a moment. Meanwhile, here are some of Michelle’s current listings:";
     } else if (data.searchLimited) {
-      emptyMsg = "We could only check the most recently updated listings for “" + esc(typed) + "”. " +
-                 "The MLS would not run a full search on that. Try a zip code, an MLS number, " +
-                 "or a street number with the street name.";
+      emptyHeading = "Sorry, we couldn’t find that search";
+      emptyMsg = "A zip code, an MLS number, or a street number with the street name will search " +
+                 "everything in the MLS. Meanwhile, here are some of Michelle’s current listings:";
     } else if (typed) {
-      emptyMsg = "Nothing in the Greater Alabama MLS matches “" + esc(typed) + "” right now. " +
-                 "Check the spelling, try just the street name or the city, or search by MLS number.";
+      emptyHeading = "Sorry, we couldn’t find that search";
+      emptyMsg = "Nothing matches “" + esc(typed) + "” right now — check the spelling, or try " +
+                 "just the street name, the city, or the MLS number. Meanwhile, here are some of " +
+                 "Michelle’s current listings:";
     }
 
     grid.innerHTML = list.length
       ? list.map(listingCard).join("")
-      : emptyState(emptyMsg, data.searchUnavailable
-          ? "Search is temporarily unavailable"
-          : (data.searchLimited ? "Could not search the full MLS"
-             : (typed ? "No match for \u201C" + esc(typed) + "\u201D" : null)));
+      : emptyState(emptyMsg, emptyHeading);
+
+    if (!list.length) renderFallbackListings(grid, ticket);
 
     /* The count has to describe THIS result, not the size of the market. When
        a search failed there is no honest number to show at all. */
@@ -661,9 +688,8 @@ function initServerGrid(grid) {
         msg = "The MLS could not apply some of the extra filters, so these results are broader " +
               "than you asked for.";
       } else if (data.searchLimited) {
-        msg = "The MLS would not run a full search for that term, so only the most recently " +
-              "updated listings were checked. A zip code or an MLS number will search everything.";
-        tone = "error";
+        msg = "We could only check the most recently updated listings for that search. A zip " +
+              "code or an MLS number will search everything in the MLS.";
       } else if (data.truncated) {
         msg = "That search matches more listings than we can show at once. These are the most " +
               "recently updated matches — add a city, a zip or a price range to narrow it down.";
