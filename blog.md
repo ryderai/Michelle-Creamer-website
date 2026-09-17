@@ -15,7 +15,7 @@ note: Markdown mirror of the HTML page above, for AI readers. The HTML page is c
 
 Market intel, neighborhood news, and straight answers about buying and selling in Vestavia Hills.
 
-![Market data](https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80)
+![Michelle Creamer smiling in a bright white kitchen](https://www.michellesellslibertypark.com/img/michelle-kitchen.jpg)
 
 [Market](market-trends.html)
 
@@ -23,7 +23,7 @@ Market intel, neighborhood news, and straight answers about buying and selling i
 
 [What multiple-offer weeks and new Bray inventory mean for your move.](market-trends.html)
 
-![Home keys](https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80)
+![Liberty Park Middle School campus, Vestavia Hills](https://www.michellesellslibertypark.com/img/g-school-2.jpg)
 
 [Buyers](home-buying-guide.html)
 
@@ -31,7 +31,7 @@ Market intel, neighborhood news, and straight answers about buying and selling i
 
 [Agency, checklists, and the 14 things your buyer’s agent should be doing.](home-buying-guide.html)
 
-![Staged home](https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80)
+![One of Michelle’s clients holding a Sold by Michelle sign on her front steps](https://www.michellesellslibertypark.com/img/client-sold-06.jpg)
 
 [Sellers](marketing-your-home.html)
 

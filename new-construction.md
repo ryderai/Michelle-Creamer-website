@@ -15,8 +15,6 @@ note: Markdown mirror of the HTML page above, for AI readers. The HTML page is c
 
 Liberty Park is growing — The Bray town center is bringing new condos, townhomes, and single-family homes by builders like Harris Doyle, with 20 more years of planned growth ahead.
 
-![New construction home](https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80)
-
 ## The builder has an agent. You should too.
 
 Builder contracts, allowances, upgrades, and timelines all favor the builder — unless someone on your side has negotiated them a hundred times. Michelle has represented buyers in Liberty Park’s new phases since the beginning.
