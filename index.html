@@ -92,7 +92,7 @@
       "description": "Michelle Creamer is a Realtor® and Associate Broker with ARC Realty who works the Liberty Park and Vestavia Hills market in Alabama, inside the greater Birmingham metro area. Alabama real estate license #70777, licensed since 2002.",
       "url": "https://www.michellesellslibertypark.com/",
       "image": "https://www.michellesellslibertypark.com/img/og.jpg",
-      "telephone": "+1-205-730-2359",
+      "telephone": "+1-205-999-8164",
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "3215 Endeavor Lane Suite 113",
@@ -125,9 +125,6 @@
         "New construction",
         "Relocation"
       ],
-      "parentOrganization": {
-        "@id": "https://www.michellesellslibertypark.com/#arc"
-      },
       "mainEntityOfPage": {
         "@id": "https://www.michellesellslibertypark.com/#webpage"
       },
@@ -138,24 +135,9 @@
         "https://www.google.com/maps?cid=10013070984403547862",
         "https://app.arcrealtyco.com/michellecreamer-1444"
       ],
-      "contactPoint": [
-        {
-          "@type": "ContactPoint",
-          "contactType": "sales",
-          "telephone": "+1-205-730-2359",
-          "name": "Office",
-          "areaServed": "US",
-          "availableLanguage": "English"
-        },
-        {
-          "@type": "ContactPoint",
-          "contactType": "sales",
-          "telephone": "+1-205-999-8164",
-          "name": "Mobile",
-          "areaServed": "US",
-          "availableLanguage": "English"
-        }
-      ]
+      "memberOf": {
+        "@id": "https://www.michellesellslibertypark.com/#arc"
+      }
     },
     {
       "@type": "Person",
@@ -165,7 +147,26 @@
       "url": "https://www.michellesellslibertypark.com/",
       "image": "https://www.michellesellslibertypark.com/img/michelle-portrait.jpg",
       "worksFor": {
-        "@id": "https://www.michellesellslibertypark.com/#arc"
+        "@type": "Organization",
+        "@id": "https://www.michellesellslibertypark.com/#arc",
+        "name": "ARC Realty",
+        "description": "Real estate brokerage. Michelle Creamer is a Realtor® and Associate Broker licensed under ARC Realty.",
+        "url": "https://www.arcrealtyco.com",
+        "telephone": "+1-205-730-2359",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "3215 Endeavor Lane Suite 113",
+          "addressLocality": "Vestavia Hills",
+          "addressRegion": "AL",
+          "postalCode": "35242",
+          "addressCountry": "US"
+        },
+        "sameAs": [
+          "https://www.arcrealtyco.com"
+        ],
+        "employee": {
+          "@id": "https://www.michellesellslibertypark.com/#michelle"
+        }
       },
       "identifier": {
         "@type": "PropertyValue",
@@ -181,30 +182,6 @@
       ],
       "affiliation": {
         "@id": "https://www.michellesellslibertypark.com/#arc"
-      }
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://www.michellesellslibertypark.com/#arc",
-      "url": "https://www.arcrealtyco.com",
-      "subOrganization": {
-        "@id": "https://www.michellesellslibertypark.com/#business"
-      },
-      "sameAs": [
-        "https://www.arcrealtyco.com"
-      ],
-      "name": "ARC Realty",
-      "description": "Real estate brokerage. Michelle Creamer is a Realtor® and Associate Broker licensed under ARC Realty.",
-      "employee": {
-        "@id": "https://www.michellesellslibertypark.com/#michelle"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "3215 Endeavor Lane Suite 113",
-        "addressLocality": "Vestavia Hills",
-        "addressRegion": "AL",
-        "postalCode": "35242",
-        "addressCountry": "US"
       }
     },
     {
