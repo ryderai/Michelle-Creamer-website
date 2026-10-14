@@ -1451,3 +1451,6 @@ section.gr { background: var(--ink); color: #e9e4d8; padding: 0; overflow: hidde
    (credit 6.6:1, disclaimer 6.1:1) and still read as small print. */
 .ai-syndicate-credit { opacity: .8; }
 .idx-disclaimer p { color: rgba(255, 255, 255, .55); }
+
+/* v2 (2026-10-14): homepage review section photo framing */
+.gr-photo img.gr-img-dog { object-position: 50% 12%; }
