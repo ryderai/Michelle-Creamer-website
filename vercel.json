@@ -42,6 +42,10 @@
     {
       "source": "/GEO-WEEK2-RESULT-2026-08-25.md",
       "destination": "/_internal-not-public"
+    },
+    {
+      "source": "/review",
+      "destination": "/review.html"
     }
   ],
   "headers": [
@@ -94,6 +98,13 @@
           "value": "text/markdown; charset=utf-8"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/review/",
+      "destination": "/review",
+      "permanent": true
     }
   ]
 }

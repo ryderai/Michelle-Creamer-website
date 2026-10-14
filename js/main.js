@@ -170,3 +170,43 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+/* ---------- Google review feature (google-review-feature-2026-10-14) ----------
+   Stars draw in once when the section scrolls into view (skipped if the visitor
+   asks for reduced motion). On /review: share, copy and QR download for Michelle. */
+document.addEventListener("DOMContentLoaded", () => {
+  const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("[data-gr]").forEach((sec) => {
+    if (still || !("IntersectionObserver" in window)) return;
+    const stars = sec.querySelector(".gr-stars");
+    if (!stars) return;
+    sec.classList.add("gr-anim");
+    // Watch the stars themselves (not the tall section), so they draw in on any screen shape
+    const io = new IntersectionObserver((entries) => entries.forEach((en) => {
+      if (en.isIntersecting) { sec.classList.add("in"); io.disconnect(); }
+    }), { threshold: 0 });
+    io.observe(stars);
+  });
+
+  const url = "https://www.michellesellslibertypark.com/review";
+  const status = document.querySelector(".rv-status");
+  const say = (msg) => { if (status) { status.textContent = ""; setTimeout(() => { status.textContent = msg; }, 50); } };
+  const shareBtn = document.querySelector("[data-share]");
+  if (shareBtn && navigator.share) {
+    shareBtn.hidden = false;
+    shareBtn.addEventListener("click", () => {
+      navigator.share({ title: "Review Michelle Creamer on Google", url }).catch(() => {});
+    });
+  }
+  const copyBtn = document.querySelector("[data-copy]");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        say("Link copied: michellesellslibertypark.com/review");
+      } catch (e) {
+        say("Copy did not work here. The link is michellesellslibertypark.com/review");
+      }
+    });
+  }
+});

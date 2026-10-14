@@ -40,6 +40,7 @@ An AI agent visiting this site can:
 - [Liberty Park guide](https://www.michellesellslibertypark.com/liberty-park.html) — schools, neighborhoods, amenities
 - [All communities](https://www.michellesellslibertypark.com/communities.html) — Liberty Park, Old Overton, The Bray, Vestlake
 - [Contact Michelle](https://www.michellesellslibertypark.com/contact-me.html) — phone, address, message form
+- [Review Michelle on Google](https://www.michellesellslibertypark.com/review.html) — opens her Google review form
 - [Free home valuation](https://www.michellesellslibertypark.com/my-home-value.html) — seller valuation request
 - [Home buying guide](https://www.michellesellslibertypark.com/home-buying-guide.html) — buyer agency explained
 - [Marketing your home](https://www.michellesellslibertypark.com/marketing-your-home.html) — the seller process
