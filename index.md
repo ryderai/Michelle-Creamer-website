@@ -123,7 +123,7 @@ Real words from real closings.
 
 ## Worked with Michelle? Tell Google.
 
-Michelle Creamer is rated 5.0 out of 5 on Google, from 10 reviews (as of October 2026).
+Michelle Creamer is rated 5.0 out of 5 on Google (as of October 2026).
 
 Your review helps the next family choose an agent with confidence. A few honest sentences about your move is all it takes.
 
