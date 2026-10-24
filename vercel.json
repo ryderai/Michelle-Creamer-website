@@ -81,8 +81,8 @@
           "value": "none"
         },
         {
-          "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://cdn-cws.datafloat.com https://cdn.datafloat.com; media-src 'self'; connect-src 'self'; worker-src 'self' blob:; frame-src https://maps.google.com https://www.google.com"
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://zimg.paragon.ice.com; media-src 'self'; connect-src 'self'; worker-src 'self' blob:; frame-src https://maps.google.com https://www.google.com; upgrade-insecure-requests"
         }
       ]
     },
