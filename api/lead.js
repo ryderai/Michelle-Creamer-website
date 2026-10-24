@@ -21,6 +21,12 @@
                       which only works for testing. Once
                       michellesellslibertypark.com is verified in
                       Resend, set this to leads@michellesellslibertypark.com
+                      WARNING: since 24 Oct 2026 the plan is "send-nothing"
+                      DNS on michellesellslibertypark.com (SPF -all, DMARC
+                      p=reject, empty DKIM). Replace those records with
+                      Resend's SPF/DKIM values BEFORE switching, or every
+                      lead email will be rejected. Live today it sends from
+                      leads@contact.aisyndicate.com.
      LEAD_BCC_EMAIL   optional — a copy for AI Syndicate, so we can
                       prove leads are arriving.
    ============================================================ */
