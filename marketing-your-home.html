@@ -230,13 +230,14 @@
   ]
 }
 </script>
+<script src="js/img-fallback.js"></script>
 </head>
 <body>
 
 <div class="nav-wrap">
   <nav class="nav" aria-label="Main">
     <a class="nav-brand" href="index.html">
-      <img class="nav-logo" src="img/arc-realty-logo.png" alt="ARC Realty" height="26" onerror="this.remove()">
+      <img class="nav-logo" src="img/arc-realty-logo.png" alt="ARC Realty" height="26" data-fallback="remove">
       <span class="brand-text">
         <span class="brand-name">Michelle Creamer</span>
         <span class="brand-sub">ARC Realty &middot; Liberty Park</span>
@@ -291,7 +292,7 @@
 
 
 <header class="page-hero has-img">
-  <div class="hero-bg"><img src="img/hero-michelle-sold.jpg" alt="Michelle Creamer holding a Sold by Michelle sign" onerror="this.remove()"></div>
+  <div class="hero-bg"><img src="img/hero-michelle-sold.jpg" alt="Michelle Creamer holding a Sold by Michelle sign" data-fallback="remove"></div>
   <div class="container">
     <nav class="breadcrumb"><a href="index.html">Home</a><span>/</span><span>Marketing Your Home</span></nav>
     <div class="eyebrow">The Selling Machine</div>
@@ -317,9 +318,9 @@
       <h2>Recent closings</h2>
     </div>
     <div class="client-grid three">
-        <figure class="reveal"><img src="img/client-sold-03.jpg" alt="Michelle&rsquo;s clients holding a Sold by Michelle sign at a front door" width="900" height="1200" loading="lazy" onerror="this.closest('figure').remove()"></figure>
-        <figure class="reveal"><img src="img/client-sold-05.jpg" alt="Michelle&rsquo;s clients holding a Sold by Michelle sign outside their home" width="900" height="1200" loading="lazy" onerror="this.closest('figure').remove()"></figure>
-        <figure class="reveal"><img src="img/client-sold-07.jpg" alt="Michelle&rsquo;s clients holding a Sold sign inside a home" width="900" height="1200" loading="lazy" onerror="this.closest('figure').remove()"></figure>
+        <figure class="reveal"><img src="img/client-sold-03.jpg" alt="Michelle&rsquo;s clients holding a Sold by Michelle sign at a front door" width="900" height="1200" loading="lazy" data-fallback="figure"></figure>
+        <figure class="reveal"><img src="img/client-sold-05.jpg" alt="Michelle&rsquo;s clients holding a Sold by Michelle sign outside their home" width="900" height="1200" loading="lazy" data-fallback="figure"></figure>
+        <figure class="reveal"><img src="img/client-sold-07.jpg" alt="Michelle&rsquo;s clients holding a Sold sign inside a home" width="900" height="1200" loading="lazy" data-fallback="figure"></figure>
     </div>
   </div>
 </section>

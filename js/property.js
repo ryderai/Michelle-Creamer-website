@@ -43,10 +43,9 @@
     wrap.innerHTML =
       '<div class="pd-hero-img"><div class="lc-chips">' + chips.join("") + "</div>" +
         '<img id="pd-main" src="' + escAttr(urls[0]) + '" alt="' + escAttr(l.address) +
-        '" onerror="this.closest(\'.pd-hero-img\').classList.add(\'noimg\')"></div>' +
+        '" data-fallback="hero"></div>' +
       '<div class="pd-thumbs">' + urls.slice(1).map((u) =>
-        '<img src="' + escAttr(u) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()" ' +
-        'onclick="document.getElementById(\'pd-main\').src=this.src">'
+        '<img src="' + escAttr(u) + '" alt="" loading="lazy" decoding="async" data-fallback="remove" data-thumb>'
       ).join("") + "</div>";
   }
 

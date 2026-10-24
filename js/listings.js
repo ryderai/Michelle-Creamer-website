@@ -318,7 +318,7 @@ function listingCard(l) {
      It never shows a stock house, because that would show the wrong building. */
   let media;
   if (l.photo) {
-    media = '<img src="' + esc(l.photo) + '" alt="' + alt + '" loading="lazy" decoding="async" onerror="this.remove()">';
+    media = '<img src="' + esc(l.photo) + '" alt="' + alt + '" loading="lazy" decoding="async" data-fallback="remove">';
   } else if (l.photosCount === 0) {
     media = "";   // MLS says there is nothing to fetch
   } else {
