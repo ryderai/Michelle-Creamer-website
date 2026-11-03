@@ -103,6 +103,31 @@ document.addEventListener("DOMContentLoaded", () => {
    ============================================================ */
 const LEAD_API = "/api/lead";
 
+/* Where did this visitor come from? (2026-11-02)
+   Saved once per visit, on the first page they open, so a lead can be counted by source
+   (Google, ChatGPT, Zillow...) without storing who they are. sessionStorage only: it is
+   gone when the tab closes, and nothing is sent anywhere unless they submit a form. */
+(function rememberSource() {
+  try {
+    if (sessionStorage.getItem("mc_src")) return;
+    const utm = new URLSearchParams(window.location.search).get("utm_source");
+    let ref = "";
+    try { ref = document.referrer ? new URL(document.referrer).hostname : ""; } catch (e) { ref = ""; }
+    if (ref === window.location.hostname) ref = "";
+    const parts = [];
+    if (utm) parts.push("utm:" + utm.slice(0, 40));
+    if (ref) parts.push("ref:" + ref.slice(0, 60));
+    sessionStorage.setItem("mc_src", parts.join(" | ") || "direct");
+    sessionStorage.setItem("mc_land", window.location.pathname.slice(0, 80));
+  } catch (e) { /* storage blocked: the form still works, source reads "unknown" */ }
+})();
+
+function leadSource() {
+  try {
+    return { src: sessionStorage.getItem("mc_src") || "unknown", land: sessionStorage.getItem("mc_land") || "" };
+  } catch (e) { return { src: "unknown", land: "" }; }
+}
+
 function leadFallbackHtml(msg) {
   return '<div class="form-error" role="alert">' +
     "<b>" + msg + "</b><br>" +
@@ -139,6 +164,9 @@ document.addEventListener("DOMContentLoaded", () => {
       data._form = form.getAttribute("data-lead-form");
       data._page = window.location.pathname;
       data._started = openedAt;
+      const s = leadSource();
+      data._src = s.src;
+      data._land = s.land;
 
       let ok = false, message = "";
       try {

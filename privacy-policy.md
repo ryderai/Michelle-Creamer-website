@@ -21,6 +21,8 @@ This website is operated on behalf of Michelle Creamer, ARC Realty. We respect y
 
 When you submit a form on this site (home value requests, market report subscriptions, contact messages), we collect the information you provide — such as your name, email address, phone number, and property address — solely to respond to your request and provide real estate services.
 
+Forms also record how you reached this site (for example, the website that sent you or a campaign tag in the link) and, if you choose to answer, how you found Michelle. This helps us learn which sources work. A count that contains no name, email, phone number, address or message may be shared with our website and marketing partner.
+
 ## How we use it
 
 Your information is used to respond to inquiries, provide valuations and market reports you request, and communicate about real estate services. We do not sell your personal information. By submitting your information, you consent to be contacted by email, SMS message, and/or phone call; you may opt out at any time.

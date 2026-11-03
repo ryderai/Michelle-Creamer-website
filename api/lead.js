@@ -29,6 +29,11 @@
                       leads@contact.aisyndicate.com.
      LEAD_BCC_EMAIL   optional — a copy for AI Syndicate, so we can
                       prove leads are arriving.
+     LEAD_COUNT_EMAIL optional (added 2026-11-02) — a COUNT-ONLY receipt:
+                      form, page, time, source and "how did you find
+                      Michelle". No name, email, phone or message.
+                      Lets AI Syndicate count leads by source while the
+                      lead itself still goes to Michelle only.
    ============================================================ */
 
 const RESEND_URL   = "https://api.resend.com/emails";
@@ -39,7 +44,36 @@ const MAX_FIELD  = 4000;    // per answer
 const MAX_FIELDS = 30;
 
 /* Field names the form uses for its own plumbing, not real answers. */
-const META_FIELDS = new Set(["_form", "_page", "_started", "website"]);
+const META_FIELDS = new Set(["_form", "_page", "_started", "website", "_src", "_land"]);
+
+/* Friendly labels for field names Michelle sees in the email. */
+const LABELS = { found_via: "How they found you" };
+
+/* The browser sends "utm:<value> | ref:<hostname>", "direct" or "unknown".
+   Anything else (a hand-made request) is replaced, so no free text reaches the count. */
+function cleanSource(v) {
+  const s = oneLine(v || "unknown");
+  if (s === "direct" || s === "unknown") return s;
+  return /^(utm:[\w.\-]{1,40})?( \| )?(ref:[a-z0-9.\-]{1,60})?$/i.test(s) && s ? s : "other";
+}
+
+/* Turn the raw source into a plain name. AI apps add utm_source or send a referrer. */
+function sourceName(src) {
+  const s = String(src || "").toLowerCase();
+  if (!s || s === "unknown") return "Unknown";
+  if (/chatgpt|openai/.test(s)) return "ChatGPT";
+  if (/perplexity/.test(s)) return "Perplexity";
+  if (/gemini\.google|bard\.google/.test(s)) return "Gemini";
+  if (/copilot/.test(s)) return "Copilot";
+  if (/claude\.ai|anthropic/.test(s)) return "Claude";
+  if (/google\./.test(s)) return "Google";
+  if (/bing\./.test(s)) return "Bing";
+  if (/zillow/.test(s)) return "Zillow";
+  if (/facebook|instagram|fb\.|l\.facebook/.test(s)) return "Facebook / Instagram";
+  if (/vestaviahillsagentreport/.test(s)) return "Vestavia Hills Agent Report";
+  if (s === "direct") return "Direct (typed the address or a bookmark)";
+  return src;
+}
 
 const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -156,6 +190,9 @@ export default async function handler(req, res) {
 
   const formName = oneLine(body._form || "Website enquiry");
   const pagePath = oneLine(body._page || "");
+  const source   = cleanSource(body._src);
+  const landing  = /^\/[\w\-./]{0,80}$/.test(String(body._land || "")) ? String(body._land) : "";
+  const sourceLabel = sourceName(source);
 
   const answers = Object.entries(body)
     .filter(([k, v]) => !META_FIELDS.has(k) && v != null && String(v).trim() !== "")
@@ -175,7 +212,7 @@ export default async function handler(req, res) {
   const subject = `[Website] ${formName}` + (nameField ? ` — ${oneLine(nameField[1])}` : "");
 
   const rows = answers.map(([k, v]) =>
-    `<tr><td style="padding:6px 14px 6px 0;vertical-align:top;color:#666;white-space:nowrap">${esc(k)}</td>` +
+    `<tr><td style="padding:6px 14px 6px 0;vertical-align:top;color:#666;white-space:nowrap">${esc(LABELS[k] || k)}</td>` +
     `<td style="padding:6px 0;vertical-align:top"><b>${esc(v).replace(/\n/g, "<br>")}</b></td></tr>`).join("");
 
   const html =
@@ -184,10 +221,11 @@ export default async function handler(req, res) {
     `<table style="border-collapse:collapse">${rows}</table>` +
     `<p style="margin:18px 0 0;font-size:12px;color:#888">Form: ${esc(formName)}` +
     (pagePath ? ` &middot; Page: ${esc(pagePath)}` : "") +
+    ` &middot; Came from: ${esc(sourceLabel)}` +
     (replyTo ? ` &middot; Reply goes straight to ${esc(replyTo)}` : "") + `</p></div>`;
 
-  const text = answers.map(([k, v]) => `${k}: ${v}`).join("\n") +
-    `\n\n---\nForm: ${formName}${pagePath ? ` | Page: ${pagePath}` : ""}`;
+  const text = answers.map(([k, v]) => `${LABELS[k] || k}: ${v}`).join("\n") +
+    `\n\n---\nForm: ${formName}${pagePath ? ` | Page: ${pagePath}` : ""} | Came from: ${sourceLabel}`;
 
   /* Log every lead before trying to send. If the email provider is down, the
      lead still exists in the Vercel logs and can be recovered by hand. A lead
@@ -224,11 +262,58 @@ export default async function handler(req, res) {
         message: "We could not send that just now." });
     }
 
+    /* Count-only receipt (no personal details), only when LEAD_COUNT_EMAIL is set.
+       A failure here never affects the visitor or Michelle's copy. */
+    await sendCountReceipt(key, { formName, pagePath, landing, source, sourceLabel,
+      foundVia: cleanFoundVia((answers.find(([k]) => k === "found_via") || [])[1]) });
+
     return res.status(200).json({ ok: true });
 
   } catch (err) {
     console.error("[lead]", err.message);
     return res.status(502).json({ ok: false, error: "SENDFAILED",
       message: "We could not send that just now." });
+  }
+}
+
+/* ---------- count-only lead receipt (2026-11-02) ----------
+   Sends AI Syndicate a one-line receipt per lead so leads can be counted by source.
+   Contains NO name, email, phone, address or message — only what is below. */
+/* Only the dropdown's own answers may reach the receipt; anything else becomes "Other",
+   so free text typed into a hand-made request can never carry personal details. */
+const FOUND_VIA_OPTIONS = ["Google search", "Google Maps", "ChatGPT or another AI app", "Zillow",
+  "Facebook or Instagram", "A friend or past client", "A sign or open house", "Other"];
+function cleanFoundVia(v) {
+  const s = oneLine(v);
+  if (!s) return "";
+  return FOUND_VIA_OPTIONS.includes(s) ? s : "Other";
+}
+
+async function sendCountReceipt(key, info) {
+  const to = process.env.LEAD_COUNT_EMAIL;
+  const line = {
+    at: new Date().toLocaleString("en-US", { timeZone: "America/Chicago" }),
+    form: info.formName, page: info.pagePath, firstPage: info.landing,
+    cameFrom: oneLine(info.sourceLabel).slice(0, 80), rawSource: oneLine(info.source).slice(0, 120),
+    foundVia: info.foundVia || "(not answered)"
+  };
+  console.log("[lead-count]", JSON.stringify(line));
+  if (!to) return;
+  try {
+    const r = await fetch(RESEND_URL, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(3000),   // never hold up the visitor's "thank you"
+      body: JSON.stringify({
+        from: process.env.LEAD_FROM_EMAIL || DEFAULT_FROM,
+        to: [to],
+        subject: `[Lead count] michellesellslibertypark.com — ${info.formName} — via ${info.sourceLabel}`,
+        text: Object.entries(line).map(([k, v]) => `${k}: ${v}`).join("\n") +
+          "\n\nCount-only receipt. The lead itself went to Michelle. No personal details are included."
+      })
+    });
+    if (!r.ok) console.error("[lead-count] receipt failed", r.status);
+  } catch (err) {
+    console.error("[lead-count] receipt error", err.message);
   }
 }

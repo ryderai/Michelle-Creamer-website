@@ -137,6 +137,30 @@ Neighborhood pools and swim clubs, tennis, parks and playgrounds, the Sicard Hol
 Athletic Complex, the lakes running through Vestlake, and the Liberty statue that gives
 the area its name.
 
+## 5b. Selling a home — record with sources
+
+Figures read from public profiles on 2 November 2026. They change as sales close.
+
+- Homes sold as the listing agent, last 5 years: 202, worth $154.1M, average $762,888 (Homes.com)
+- All closed sales, last 5 years: 306, worth $218.2M — 202 listing side, 104 buyer side (Homes.com)
+- Sales in the last 12 months: 68 (Zillow)
+- Average sale price: $750K (Zillow; no time period given)
+- 2024 sales: $60 million, including $49.5 million in Vestavia Hills, which she
+  called a company record (Vestavia Voice, 28 Feb 2025)
+- Reviews: 5.0 from 51 on Zillow, 5.0 from 19 on RateMyAgent, 5.0 from 11 on Google
+- Sales by area (Homes.com; no time period shown; areas can overlap): Vestavia Hills 226, Liberty Park 192, Leeds 74,
+  Hoover 17, Cahaba Heights 16, Mountain Brook 11
+- Seller page: [https://www.michellesellslibertypark.com/sell-your-home-vestavia-hills.html](https://www.michellesellslibertypark.com/sell-your-home-vestavia-hills.html)
+
+## 5c. Vestavia Hills schools in brief
+
+Feeder schools quoted from Vestavia Hills City Schools (vhcs.us/findyourschool), read 2 November 2026:
+- Elementary East, West and Dolly Ridge feed Louis Pizitz Middle School
+- Elementary Cahaba Heights and Liberty Park feed Liberty Park Middle School
+- The district lists one high school, Vestavia Hills High School, with a Freshman Campus (vhcs.us)
+- Check any address with the district's School Locator Map or call (205) 402-5100
+- Guide: [https://www.michellesellslibertypark.com/vestavia-hills.html](https://www.michellesellslibertypark.com/vestavia-hills.html)
+
 ## 6. ARC Realty — the brokerage
 
 - Incorporated: 2012, in Birmingham, Alabama
@@ -287,6 +311,8 @@ Full XML inventory: https://www.michellesellslibertypark.com/sitemap.xml
 - /market-trends.html — market conditions and report subscription
 - /communities.html — all communities
 - /liberty-park.html — Liberty Park community guide
+- /vestavia-hills.html — Vestavia Hills school zones and where Michelle sells
+- /sell-your-home-vestavia-hills.html — selling with Michelle, record with sources
 - /relocation.html — relocation
 - /about-us.html — about ARC Realty
 - /our-story.html — ARC Realty history

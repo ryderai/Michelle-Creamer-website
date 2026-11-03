@@ -1454,3 +1454,48 @@ section.gr { background: var(--ink); color: #e9e4d8; padding: 0; overflow: hidde
 
 /* v2 (2026-10-14): homepage review section photo framing */
 .gr-photo img.gr-img-dog { object-position: 50% 12%; }
+
+/* 2026-11-02: skip link, sourced tables, step list, optional-field label */
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 1000; background: var(--ink); color: var(--white); padding: 12px 18px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.skip-link:focus, .skip-link:focus-visible { top: 12px; outline: 3px solid var(--brass-soft); outline-offset: 2px; }
+main:focus { outline: none; }
+.mc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
+.mc-table-wrap:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+.mc-table { width: 100%; border-collapse: collapse; font-size: 15.5px; background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+.mc-table caption { text-align: left; font-size: 13px; color: var(--text-soft); padding: 0 0 10px; caption-side: top; }
+.mc-table th, .mc-table td { text-align: left; padding: 14px 16px; vertical-align: top; border-bottom: 1px solid var(--line); }
+.mc-table thead th { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-soft); font-weight: 600; background: var(--paper); }
+.mc-table tbody th { font-weight: 600; color: var(--ink); }
+.mc-table tr:last-child th, .mc-table tr:last-child td { border-bottom: 0; }
+.mc-table a { color: var(--blue-deep); text-decoration: underline; text-underline-offset: 2px; }
+.mc-source { font-size: 13.5px; color: var(--text-soft); margin-top: 14px; }
+.stat-band .mc-source { color: rgba(255,255,255,.72); text-align: center; margin-top: 28px; }
+.mc-source a { color: inherit; text-decoration: underline; }
+.mc-steps { padding-left: 1.2em; display: grid; gap: 10px; }
+.mc-steps li { padding-left: 4px; }
+.field .opt { font-weight: 400; color: var(--text-soft); }
+@media (max-width: 640px) { .mc-table { font-size: 14.5px; } .mc-table th, .mc-table td { padding: 12px 12px; } }
+/* 2026-11-02: eyebrow contrast. Brass #b99a5f on light grounds is 2.4–2.7:1 (fails 4.5:1).
+   A deeper brass on light grounds; dark sections keep the soft brass. */
+.eyebrow { color: #846631; }
+.eyebrow::before { background: #846631; }
+.cta-band .eyebrow, .stat-band .eyebrow, footer .eyebrow { color: var(--brass-soft); }
+.cta-band .eyebrow::before, .stat-band .eyebrow::before, footer .eyebrow::before { background: var(--brass-soft); }
+.step-num, .press-item .date { color: #846631; }
+/* 2026-11-02: 3-column source tables stack into cards on phones */
+@media (max-width: 640px) {
+  .mc-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .mc-stack tr { display: block; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .mc-stack tr:last-child { border-bottom: 0; }
+  .mc-stack th, .mc-stack td { display: block; border: 0; padding: 2px 0; }
+  .mc-stack tbody th { font-size: 15.5px; margin-bottom: 4px; }
+  .mc-stack td::before { content: attr(data-label) ": "; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-soft); font-weight: 600; }
+}
+/* 2026-11-02: mobile menu readable at the top of every page. Before the page is scrolled the
+   nav links are white (for the dark hero), but the open phone menu is a light panel, so the
+   links were white-on-white. Dark links + a solid panel inside the phone menu. */
+@media (max-width: 1280px) {
+  .nav-menu { background: var(--paper); }
+  .nav-menu .nav-link { color: var(--text); }
+  .nav-menu .nav-link:hover, .nav-menu .nav-item.open > .nav-link { background: rgba(11,21,36,.055); color: var(--ink); }
+}

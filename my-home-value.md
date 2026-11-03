@@ -13,7 +13,7 @@ note: Markdown mirror of the HTML page above, for AI readers. The HTML page is c
 
 # What’s My Home Worth?
 
-Get a real valuation from the agent who sold $49.5M in Vestavia Hills last year — not an algorithm’s guess. Michelle prices homes street by street, because she’s lived on these streets for 20 years.
+Get a real valuation from the agent who sold $49.5M in Vestavia Hills in 2024 — not an algorithm’s guess. Michelle prices homes street by street, because she’s lived on these streets for 20 years.
 
 ### Request your free home value estimate
 
