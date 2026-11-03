@@ -1,6 +1,6 @@
 ---
-title: Sell Your Vestavia Hills or Liberty Park Home | Michelle Creamer
-description: Who should list your Vestavia Hills home? Michelle Creamer has sold 202 homes as the listing agent in five years (Homes.com). See her record and how she sells.
+title: Sell Your Vestavia Hills Home | Michelle Creamer
+description: Who should list your Vestavia Hills home? Michelle Creamer sold 202 homes as the listing agent in five years (Homes.com). See her record and how she sells.
 source: https://www.michellesellslibertypark.com/sell-your-home-vestavia-hills.html
 site: Michelle Creamer
 generated: 2026-11-02
