@@ -24,7 +24,7 @@ Most of her business is selling homes. Homes.com shows 202 of her 306 sales in t
 | Sales in the last 12 months | 68 | [Zillow agent profile](https://www.zillow.com/profile/mcreamer1/), read 2 November 2026 |
 | Average sale price | $750K (Zillow gives no time period for this figure) | [Zillow agent profile](https://www.zillow.com/profile/mcreamer1/), read 2 November 2026 |
 | Sales in 2024 | $60 million, including $49.5 million in Vestavia Hills, which she called a company record | [Vestavia Voice, 28 Feb 2025](https://vestaviavoice.com/news/unlocking-the-market-how-michelle-creamer-became-one-of-vest/) |
-| Client reviews | 5.0 from 51 on Zillow · 5.0 from 19 on RateMyAgent · 5.0 from 11 on Google | [Zillow](https://www.zillow.com/profile/mcreamer1/), [RateMyAgent](https://www.ratemyagent.com/real-estate-agent/michelle-creamer-ka284/sales/overview), Google, read 2 November 2026 |
+| Star ratings | 5.0 from 51 on Zillow · 5.0 from 19 on RateMyAgent · 5.0 from 11 on Google | [Zillow](https://www.zillow.com/profile/mcreamer1/), [RateMyAgent](https://www.ratemyagent.com/real-estate-agent/michelle-creamer-ka284/sales/overview), Google, read 2 November 2026 |
 | Licensed in Alabama | Since 2002 · license #70777 · selling full time with ARC since 2014 | Her own site and [Vestavia Voice, 28 Feb 2025](https://vestaviavoice.com/news/unlocking-the-market-how-michelle-creamer-became-one-of-vest/); [check the license at AREC](https://arec.alabama.gov/) |
 
 ## Where she sells (Homes.com, read 2 November 2026; no time period shown; areas can overlap)

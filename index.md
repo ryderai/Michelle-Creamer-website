@@ -107,7 +107,7 @@ A few of the people who trusted Michelle with the biggest move of their year.
 
 ## 5.0 ★ from 70 client reviews
 
-51 reviews on Zillow (https://www.zillow.com/profile/mcreamer1/) and 19 on RateMyAgent, all 5.0, counted 2 November 2026.
+Counted across Zillow (https://www.zillow.com/profile/mcreamer1/) and RateMyAgent on 2 November 2026.
 
 Real words from real closings.
 
