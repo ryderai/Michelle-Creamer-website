@@ -657,8 +657,10 @@ function initServerGrid(grid) {
         countEl.textContent = "Search unavailable";
       } else {
         const n = Number(data.total || 0);
-        countEl.textContent = n.toLocaleString("en-US") + (n === 1 ? " property" : " properties") +
-          (data.truncated ? " or more" : "");
+        countEl.textContent = data.approximate
+          ? n.toLocaleString("en-US") + (n === 1 ? " close match" : " close matches")
+          : n.toLocaleString("en-US") + (n === 1 ? " property" : " properties") +
+            (data.truncated ? " or more" : "");
       }
     }
 
@@ -684,6 +686,17 @@ function initServerGrid(grid) {
         msg = "We could not search the MLS for “" + typed + "” just now, so nothing is shown. " +
               "This is a problem on our side, not a sign that the property is gone.";
         tone = "error";
+      } else if (data.approximate) {
+        /* 3 Nov 2026: nothing matched exactly (a typo, a different city name,
+           a joined word, a wrong house number) — show the nearest streets,
+           labelled, instead of a dead end. */
+        msg = "No exact match for “" + typed + "”. These are the closest matches in the MLS.";
+      } else if (data.placeMismatch) {
+        /* The street matched, but the MLS files it under a different city or
+           zip than the one typed (Liberty Park homes are often "Birmingham"). */
+        msg = "These match the street you typed. The MLS lists them under a different city or zip code.";
+      } else if (data.cityLimited) {
+        msg = "City search is limited right now. Add a street, zip code or neighborhood for complete results.";
       } else if (data.droppedFilters) {
         msg = "The MLS could not apply some of the extra filters, so these results are broader " +
               "than you asked for.";

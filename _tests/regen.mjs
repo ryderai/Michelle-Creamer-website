@@ -18,8 +18,8 @@ const parts = [
 ];
 
 fs.writeFileSync(path.resolve(here, '_extracted-logic.mjs'),
-  parts.join('\n') + "\nexport { parseQuery, phraseCandidates, rowText, rowMatchesText, rowMatchesType, TYPE_MATCH };\n");
-const out = parts.join('\n') + "\nexport { parseQuery, phraseCandidates, rowText, rowMatchesText, rowMatchesType, TYPE_MATCH };\n";
+  parts.join('\n') + "\nexport { parseQuery, phraseCandidates, rowText, rowMatchesText, rowMatchesType, TYPE_MATCH, preferSoft, streetDistance };\n");
+const out = parts.join('\n') + "\nexport { parseQuery, phraseCandidates, rowText, rowMatchesText, rowMatchesType, TYPE_MATCH, preferSoft, streetDistance };\n";
 for (const need of ['NOISE_WORDS', 'STREET_SUFFIXES', 'function parseQuery', 'function rowMatchesText',
                     'function rowMatchesType', 'const TYPE_MATCH', 'function phraseCandidates']) {
   if (!out.includes(need)) {
