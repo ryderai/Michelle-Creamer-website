@@ -93,6 +93,11 @@
       /* All MLS text into innerHTML, so all of it escaped. */
       '<nav class="breadcrumb" style="color:var(--text-soft)"><a href="index.html">Home</a><span>/</span><a href="property-search.html">Property Search</a><span>/</span><span>' + escAttr(l.address) + "</span></nav>" +
       "<h1>" + escAttr(l.address) + '</h1><p class="pd-city">' + escAttr(l.city) + ", " + escAttr(l.state) + " " + escAttr(l.zip) + (l.community ? " · " + escAttr(l.community) : "") + "</p>" +
+      /* IDX attribution (GALMLS Rules §18.2.12 + §18.3.4, checked 17 Nov 2026):
+         the listing firm, its phone and the listing agent, from the MLS record,
+         right under the address — never Michelle unless the MLS says so. */
+      (window.listedByText && window.listedByText(l)
+        ? '<p class="pd-listed-by">' + escAttr(window.listedByText(l)) + "</p>" : "") +
       '<div class="pd-price">' + priceStr + "</div>" +
       '<div class="pd-facts">' +
       (l.beds != null ? '<div><b>' + l.beds + "</b><span>Beds</span></div>" : "") +
@@ -126,6 +131,16 @@
     if (!$("#pd-details").innerHTML.includes("Interior")) {
       $("#pd-details").innerHTML += '<p class="pd-note">Interior, exterior, school, and utility details arrive with the live MLS feed.</p>';
     }
+
+    // ---- sidebar card: Michelle is the listing agent only when the MLS says so
+    //      (her name AND ARC Realty on the record); otherwise a neutral contact line.
+    const role = document.querySelector("[data-pd-agent-role]");
+    if (role) role.textContent = (window.isMichelleListing && window.isMichelleListing(l))
+      ? "Listing Agent · ARC Realty"
+      : "Ask about this home · ARC Realty";
+
+    // ---- when the MLS data was pulled (fills the footer line, if the feed sent it)
+    if (typeof stampFeedFreshness === "function") stampFeedFreshness();
 
     // ---- form prefill
     const msg = $("#pd-form textarea");

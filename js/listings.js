@@ -49,9 +49,11 @@ function normalizeListing(raw) {
     blurb: raw.blurb || "",
     description: raw.description || "",   // full MLS remarks (live feed: PublicRemarks)
     details: raw.details || null,
-    // IDX attribution — required on display; falls back to Michelle for local demo data
-    listOffice: raw.listOffice || "ARC Realty",
-    listAgent: raw.listAgent || "Michelle Creamer",
+    // IDX attribution — required on display. Falls back to Michelle ONLY for the
+    // local demo file: on live MLS data a missing name must stay missing, or
+    // another firm's listing would be labelled as hers (17 Nov 2026).
+    listOffice: raw.listOffice || (LISTINGS_API.mode === "live" ? "" : "ARC Realty"),
+    listAgent: raw.listAgent || (LISTINGS_API.mode === "live" ? "" : "Michelle Creamer"),
     listOfficePhone: raw.listOfficePhone || ""
   };
 }
@@ -162,6 +164,41 @@ const STATUS_LABEL = {
   "coming-soon": "Coming Soon",
   "sold": "Sold"
 };
+/* IDX attribution line. Greater Alabama MLS Rules & Regulations (July 2024):
+   §18.2.12 — every IDX listing names the listing firm and the email or phone
+   number the listing firm provided, no smaller than the median listing-data
+   text; §18.3.4 — every IDX listing names the listing agent. Checked against
+   the rules 17 Nov 2026. Used by the search cards and the detail page. */
+const NBSP = String.fromCharCode(0xA0), NBHY = String.fromCharCode(0x2011);
+function fmtPhone(p) {
+  const d = String(p || "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  // non-breaking space + hyphen so a phone number never splits across two lines
+  return d.length === 10 ? "(" + d.slice(0, 3) + ")" + NBSP + d.slice(3, 6) + NBHY + d.slice(6) : String(p || "").trim();
+}
+function listedByText(l) {
+  const who = [l.listAgent, l.listOffice].filter(Boolean).join(", ");
+  // Never blank and never a guess: if the MLS record has no names, say so.
+  if (!who) return "Listing firm and agent not supplied by the MLS";
+  return "Listed by " + who + (l.listOfficePhone ? " · " + fmtPhone(l.listOfficePhone) : "");
+}
+window.listedByText = listedByText;
+
+/* True only when the MLS says Michelle is the listing agent AND the office is
+   ARC Realty — a name match alone could catch another agent called Creamer. */
+function isMichelleListing(l) {
+  return /^\s*michelle\s+creamer\s*$/i.test(l.listAgent || "") && /\barc\s+realty\b/i.test(l.listOffice || "");
+}
+window.isMichelleListing = isMichelleListing;
+
+/* GALMLS copyright notice. Signed GALMLS Third-Party Data Access Agreement,
+   para 8: "© 20XX Greater Alabama MLS, Inc." on every page showing listing
+   data, with the year updated each 1 January. The HTML carries the year as
+   plain text too; this keeps it right on the day the year turns. */
+document.addEventListener("DOMContentLoaded", () => {
+  const y = String(new Date().getFullYear());
+  document.querySelectorAll("[data-galmls-year]").forEach((el) => { el.textContent = y; });
+});
+
 function fmtOpenHouse(oh) {
   if (!oh) return "";
   const d = new Date(oh.date + "T12:00:00");
@@ -347,9 +384,8 @@ function listingCard(l) {
         '<div class="lc-address">' + esc(l.address) +
           '<span class="city">' + esc(l.city) + ", " + esc(l.state) + " " + esc(l.zip) + "</span></div>" +
         '<div class="lc-specs">' + specs.join("") + "</div>" +
-        '<div class="lc-mls">MLS# ' + esc(String(l.mls || "").replace("PLACEHOLDER-", "")) +
-          " · Listed by " + esc(l.listAgent || "Michelle Creamer") +
-          (l.listOffice ? ", " + esc(l.listOffice) : "") + "</div>" +
+        '<div class="lc-mls">MLS# ' + esc(String(l.mls || "").replace("PLACEHOLDER-", "")) + "</div>" +
+        '<div class="lc-listed-by">' + esc(listedByText(l)) + "</div>" +
         '<div class="lc-cta"><a class="text-link" href="' + url + '">View Property</a></div>' +
       "</div>" +
     "</article>"

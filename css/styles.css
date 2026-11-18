@@ -374,6 +374,12 @@ section.tight { padding: clamp(48px, 6vw, 80px) 0; }
 .lc-specs { display: flex; gap: 18px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--text-soft); }
 .lc-specs b { color: var(--ink); font-weight: 650; }
 .lc-mls { font-size: 11.5px; letter-spacing: .06em; color: var(--text-soft); }
+/* 2026-11-17: IDX listing-firm line. GALMLS Rules §18.2.12: not smaller than the
+   median listing-data text on the card (chips 10.5 / MLS# 11.5 / city 13 / specs 13.5 /
+   address 15 / price 27px → median 13.25px), so 13.5px. */
+.lc-listed-by { font-size: 13.5px; line-height: 1.45; color: var(--text); }
+/* Detail page: listing text there is 11/14.5/16/16/21/28+px → median 16px. */
+.pd-listed-by { font-size: 16px; line-height: 1.5; color: var(--text); margin: -6px 0 14px; }
 .lc-cta { margin-top: auto; padding-top: 14px; }
 
 /* Listing toolbar (search pages) */
