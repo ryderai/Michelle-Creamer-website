@@ -38,6 +38,11 @@ An AI agent visiting this site can:
 - [Home](https://www.michellesellslibertypark.com/) — who she is, featured and sold listings
 - [Search listings](https://www.michellesellslibertypark.com/property-search.html) — live MLS search
 - [Liberty Park guide](https://www.michellesellslibertypark.com/liberty-park.html) — schools, neighborhoods, amenities
+- [Vestavia Hills guide](https://www.michellesellslibertypark.com/vestavia-hills.html) — school zones and where Michelle sells
+- [Leeds guide](https://www.michellesellslibertypark.com/leeds.html) — schools, city basics and Michelle's sales there
+- [Hoover guide](https://www.michellesellslibertypark.com/hoover.html) — schools, city basics and Michelle's sales there
+- [Cahaba Heights guide](https://www.michellesellslibertypark.com/cahaba-heights.html) — schools, city basics and Michelle's sales there
+- [Mountain Brook guide](https://www.michellesellslibertypark.com/mountain-brook.html) — schools, city basics and Michelle's sales there
 - [All communities](https://www.michellesellslibertypark.com/communities.html) — Liberty Park, Old Overton, The Bray, Vestlake
 - [Contact Michelle](https://www.michellesellslibertypark.com/contact-me.html) — phone, address, message form
 - [Review Michelle on Google](https://www.michellesellslibertypark.com/review.html) — opens her Google review form

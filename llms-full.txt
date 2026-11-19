@@ -312,6 +312,10 @@ Full XML inventory: https://www.michellesellslibertypark.com/sitemap.xml
 - /communities.html — all communities
 - /liberty-park.html — Liberty Park community guide
 - /vestavia-hills.html — Vestavia Hills school zones and where Michelle sells
+- /leeds.html — Leeds City Schools, the counties Leeds sits in, Michelle's Leeds sales
+- /hoover.html — Hoover City Schools, school-zone lookup, Michelle's Hoover sales
+- /cahaba-heights.html — Cahaba Heights (part of Vestavia Hills): its school path and Michelle's sales
+- /mountain-brook.html — Mountain Brook Schools, city basics, Michelle's Mountain Brook sales
 - /sell-your-home-vestavia-hills.html — selling with Michelle, record with sources
 - /relocation.html — relocation
 - /about-us.html — about ARC Realty
