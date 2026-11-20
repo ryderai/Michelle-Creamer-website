@@ -15,7 +15,7 @@ Cahaba Heights has been part of the City of Vestavia Hills since 2002. Its schoo
 
 ## Schools: Vestavia Hills City Schools
 
-Cahaba Heights is served by Vestavia Hills City Schools. The district’s Cahaba Heights elementary school feeds Liberty Park Middle School, then Vestavia Hills High School, which has a separate Freshman Campus. Not every Cahaba Heights address is zoned for that elementary school, so check the exact address on the district’s map.
+Cahaba Heights is served by Vestavia Hills City Schools. The district’s Cahaba Heights elementary school feeds Liberty Park Middle School, then Vestavia Hills High School, which has a separate Freshman Campus. Zones follow the exact address, so check yours on the district’s School Locator Map.
 
 | Elementary school | Middle school | High school |
 |---|---|---|
@@ -25,9 +25,9 @@ Sources: Vestavia Hills City Schools, Find Your School (https://vhcs.us/findyour
 
 ## Part of Vestavia Hills
 
-The City of Vestavia Hills annexed Cahaba Heights in 2002. The city is in Jefferson County (City of Vestavia Hills: https://vhal.org/community/about-vestavia-hills/, read 19 November 2026).
+The City of Vestavia Hills annexed Cahaba Heights in 2002. The city is in Jefferson County (City of Vestavia Hills (https://vhal.org/community/about-vestavia-hills/), read 19 November 2026).
 
-Because Cahaba Heights is inside Vestavia Hills, the city’s schools and services apply. See the Vestavia Hills guide for the full school chart.
+Because Cahaba Heights is inside Vestavia Hills, the city’s schools and services apply. See the Vestavia Hills guide (https://www.michellesellslibertypark.com/vestavia-hills.html) for the full school chart.
 
 ## Michelle's record in Cahaba Heights
 
@@ -52,7 +52,7 @@ Yes. The City of Vestavia Hills annexed Cahaba Heights in 2002, according to the
 
 ### Which schools serve Cahaba Heights?
 
-Vestavia Hills City Schools. Vestavia Hills Elementary Cahaba Heights feeds Liberty Park Middle School, then Vestavia Hills High School. Check the exact address on the district's School Locator Map, because not every Cahaba Heights home is zoned for that elementary school.
+Vestavia Hills City Schools. Vestavia Hills Elementary Cahaba Heights feeds Liberty Park Middle School, then Vestavia Hills High School. Zones follow the exact address, so check yours on the district's School Locator Map.
 
 ### How do I check a home's school zone?
 

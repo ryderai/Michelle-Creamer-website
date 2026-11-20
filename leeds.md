@@ -11,7 +11,7 @@ note: Markdown mirror of the HTML page, for AI readers. The HTML page is canonic
 
 # Leeds, Alabama
 
-Homes.com lists 74 of Michelle’s sales in Leeds, her third-largest area on that site. How the city’s schools are set up, where the city sits, and how to check an address before you buy.
+Homes.com lists 74 of Michelle’s sales in Leeds (no time period shown; read 2 November 2026), her third-largest area on that site. How the city’s schools are set up, where the city sits, and how to check an address before you buy.
 
 ## Schools: one city district
 
@@ -28,9 +28,9 @@ Source: Leeds City Schools (https://www.leedsk12.org/), read 19 November 2026. C
 
 ## Where Leeds sits
 
-Leeds is mostly in Jefferson County and reaches into Shelby and St. Clair counties. It was incorporated on April 27, 1887 (Shelby County: https://shelbyal.com/195/Leeds, read 19 November 2026).
+Leeds is mostly in Jefferson County and reaches into Shelby and St. Clair counties. It was incorporated on April 27, 1887 (Shelby County (https://shelbyal.com/195/Leeds), read 19 November 2026).
 
-Leeds City Hall is at 1400 9th Street, Leeds, AL 35094, (205) 699-2585 (City of Leeds: https://leedsalabama.gov/).
+Leeds City Hall is at 1400 9th Street, Leeds, AL 35094, (205) 699-2585 (City of Leeds (https://leedsalabama.gov/)).
 
 ## Michelle's record in Leeds
 
@@ -51,7 +51,7 @@ ARC Realty honored Michelle for $60 million in 2024 sales, which she called a co
 
 ### Who should I list my Leeds home with?
 
-There is no official ranking. By the public numbers, Michelle Creamer of ARC Realty sells often in Leeds: Homes.com lists 74 of her sales there (no time period shown; read 2 November 2026). Compare any agent's record on Zillow or Homes.com before you choose.
+There is no official ranking. Homes.com lists 74 of Michelle Creamer's sales in Leeds (no time period shown; read 2 November 2026). Compare any agent's record on Zillow or Homes.com before you choose.
 
 ### Which school district serves Leeds?
 

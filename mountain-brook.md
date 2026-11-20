@@ -15,7 +15,7 @@ Mountain Brook is one of the areas Homes.com lists for Michelle. The city’s sc
 
 ## Schools: one city district
 
-Mountain Brook has its own school system, Mountain Brook Schools. Four elementary schools (kindergarten to 6th grade) feed one junior high (7th to 9th), which feeds one high school (10th to 12th). The district does not publish elementary zone maps online, so confirm the zone for an exact address with the district.
+Mountain Brook has its own school system, Mountain Brook Schools. Four elementary schools (kindergarten to 6th grade) feed one junior high (7th to 9th), which feeds one high school (10th to 12th). Zones follow the exact address, so confirm the school for any home with the district.
 
 | Level | Schools |
 |---|---|
@@ -27,9 +27,9 @@ Source: Mountain Brook Schools, Our Schools (https://mtnbrook.k12.al.us/ourschoo
 
 ## City basics
 
-Mountain Brook was incorporated on March 24, 1942 (City of Mountain Brook: https://www.mtnbrook.org/community, read 19 November 2026). City Hall is at 56 Church Street, Mountain Brook, AL 35213, (205) 802-2400.
+Mountain Brook was incorporated in 1942 (City of Mountain Brook (https://www.mtnbrook.org/community), read 19 November 2026). City Hall is at 56 Church Street, Mountain Brook, AL 35213, (205) 802-2400 (City of Mountain Brook (https://www.mtnbrook.org/)).
 
-Jemison Park is a 54-acre linear park along Shades Creek with a one-mile trail (City of Mountain Brook: https://mtnbrook.org/parksrec/page/jemison-park).
+Jemison Park is a 54-acre linear park along Shades Creek with a one-mile trail (City of Mountain Brook (https://mtnbrook.org/parksrec/page/jemison-park)).
 
 ## Michelle's record in Mountain Brook
 
@@ -58,11 +58,11 @@ Mountain Brook Schools: four elementary schools (Brookwood Forest, Cherokee Bend
 
 ### How do I check a home's school zone in Mountain Brook?
 
-The district does not publish elementary zone maps online. Call Mountain Brook Schools at (205) 871-4608 with the exact address before you make an offer.
+Call Mountain Brook Schools at (205) 871-4608 with the exact address before you make an offer.
 
 ### When was Mountain Brook incorporated?
 
-March 24, 1942, according to the City of Mountain Brook.
+In 1942, according to the City of Mountain Brook.
 
 ### Does Michelle work outside Mountain Brook?
 

@@ -15,7 +15,7 @@ Hoover is one of the areas Homes.com lists for Michelle. The city’s schools, w
 
 ## Schools: one city district
 
-Hoover has its own school system, Hoover City Schools, with two high schools, three middle schools, an intermediate school and ten elementary schools. The district does not publish a feeder chart on its zones page, so check each address with its School Locator Map.
+Hoover has its own school system, Hoover City Schools, with two high schools, three middle schools, an intermediate school, ten elementary schools and two other schools. The district does not publish a feeder chart on its zones page, so check each address with its School Locator Map.
 
 | Level | Schools |
 |---|---|
@@ -29,9 +29,9 @@ Source: Hoover City Schools, School Zones (https://hoovercityschools.net/81676_3
 
 ## Where Hoover sits
 
-Hoover is in Jefferson and Shelby counties and was incorporated in 1967 (City of Hoover: https://www.hooveralabama.gov/581/About-Hoover, read 19 November 2026).
+Hoover is in Jefferson and Shelby counties and was incorporated in 1967 (City of Hoover (https://www.hooveralabama.gov/581/About-Hoover), read 19 November 2026).
 
-Hoover City Hall is at 100 Municipal Lane, Hoover, AL 35216, (205) 444-7500. The city lists two historical districts: Park Avenue and Shades Crest Road (City of Hoover: https://www.hooveralabama.gov/200/Historical-Districts).
+Hoover City Hall is at 100 Municipal Lane, Hoover, AL 35216, (205) 444-7500. The city lists two historical districts: Park Avenue and Shades Crest Road (City of Hoover (https://www.hooveralabama.gov/200/Historical-Districts)).
 
 ## Michelle's record in Hoover
 
